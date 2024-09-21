@@ -1,0 +1,39 @@
+# Ignore Python cache directories
+__pycache__/
+.pytest_cache/
+
+# Ignore all __pycache__ directories recursively
+**/__pycache__/
+
+# Ignore all .pytest_cache directories recursively
+**/.pytest_cache/
+
+# Other ignored files/folders
+.idea
+.ipynb_checkpoints
+.mypy_cache
+.vscode
+htmlcov
+dist
+site
+.coverage*
+coverage.xml
+.netlify
+test.db
+log.txt
+Pipfile.lock
+env3.*
+env
+docs_build
+site_build
+venv
+docs.zip
+archive.zip
+
+# vim temporary files
+*~
+.*.sw?
+.cache
+
+# macOS
+.DS_Store

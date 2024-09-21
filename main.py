@@ -23,8 +23,11 @@ def get_password_hash(password):
 def signup_customer(user: UserSignUp, db: Session = Depends(get_db)):
     db_customer = db.query(User).filter(User.email == user.email).first()
     if db_customer:
-        return { "status": -1,
-        "message": "Email đã được đăng ký"}
+        return ResponseAPI(
+                status=-1,
+                message="Đăng ký không thành công",
+                data=None
+            )
     hashed_password = get_password_hash(user.password)
     new_customer = User(
         username=user.username,
@@ -37,8 +40,12 @@ def signup_customer(user: UserSignUp, db: Session = Depends(get_db)):
     db.add(new_customer)
     db.commit()
     db.refresh(new_customer)
-    return { "status": 1,
-        "message": "Đăng ký thành công", "customer": new_customer}
+    return ResponseAPI(
+            status=1,
+            message="Đăng ký thành công",
+            data= new_customer
+        )
+    
 
 @app.post("/signup/supplier/")
 def signup_supplier(supplier: ShopSignUp, db: Session = Depends(get_db)):
@@ -61,14 +68,18 @@ def signin(signin_data: SignIn, db: Session = Depends(get_db)):
     supplier = db.query(Shop).filter(Shop.shop_name == signin_data.username).first()
 
     if customer and verify_password(signin_data.password, customer.password_hash):
-        return {"status": 1,
-            "message": "Đăng nhập thành công", 
-                "data": SignInReturn(
-                    username=customer.username,
+        return ResponseAPI(
+                status=1,
+                message="Đăng nhập thành công",
+                data=SignInReturn(
                     role_id=customer.role_id,
-                )}
-    
+                    username=customer.username
+                )
+            )
     else:
-        return {"status": -1,
-            "message": "Đăng nhập không thành công", 
-                }
+        return ResponseAPI(
+            status=-1,
+            message="Đăng nhập không thành công",
+            data=None
+        )
+                

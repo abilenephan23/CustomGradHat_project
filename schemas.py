@@ -1,4 +1,14 @@
 from pydantic import BaseModel, EmailStr
+from typing import Any
+
+
+class ResponseAPI(BaseModel):
+    status: int
+    message: str
+    data: Any
+    class Config:
+        arbitrary_types_allowed = True
+
 
 class UserSignUp(BaseModel):
     username: str
