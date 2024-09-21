@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from database import engine, Base, get_db
-from models.user import Customer, Supplier
+from models.user import User, Shop
 from schemas import *
 
 app = FastAPI()
@@ -20,27 +20,30 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 @app.post("/signup/customer/")
-def signup_customer(customer: CustomerSignUp, db: Session = Depends(get_db)):
-    db_customer = db.query(Customer).filter(Customer.email == customer.email).first()
+def signup_customer(user: UserSignUp, db: Session = Depends(get_db)):
+    db_customer = db.query(User).filter(User.email == user.email).first()
     if db_customer:
-        raise HTTPException(status_code=400, detail="Email đã được đăng ký")
-    hashed_password = get_password_hash(customer.password)
-    new_customer = Customer(
-        username=customer.username,
-        email=customer.email,
-        phone=customer.phone,
-        password=hashed_password,
-        address=customer.address
+        return { "status": -1,
+        "message": "Email đã được đăng ký"}
+    hashed_password = get_password_hash(user.password)
+    new_customer = User(
+        username=user.username,
+        email=user.email,
+        phone=user.phone,
+        password_hash=hashed_password,
+        address=user.address,
+        role_id=user.role_id,
     )
     db.add(new_customer)
     db.commit()
     db.refresh(new_customer)
-    return {"message": "Đăng ký thành công", "customer": new_customer}
+    return { "status": 1,
+        "message": "Đăng ký thành công", "customer": new_customer}
 
 @app.post("/signup/supplier/")
-def signup_supplier(supplier: SupplierSignUp, db: Session = Depends(get_db)):
+def signup_supplier(supplier: ShopSignUp, db: Session = Depends(get_db)):
     hashed_password = get_password_hash(supplier.password)
-    new_supplier = Supplier(
+    new_supplier = Shop(
         shop_name=supplier.shop_name,
         address=supplier.address,
         phone=supplier.phone,
@@ -54,12 +57,18 @@ def signup_supplier(supplier: SupplierSignUp, db: Session = Depends(get_db)):
 
 @app.post("/signin/")
 def signin(signin_data: SignIn, db: Session = Depends(get_db)):
-    customer = db.query(Customer).filter(Customer.username == signin_data.username).first()
-    supplier = db.query(Supplier).filter(Supplier.shop_name == signin_data.username).first()
+    customer = db.query(User).filter(User.username == signin_data.username).first()
+    supplier = db.query(Shop).filter(Shop.shop_name == signin_data.username).first()
 
-    if customer and verify_password(signin_data.password, customer.password):
-        return {"message": "Đăng nhập thành công", "user": "customer"}
-    elif supplier and verify_password(signin_data.password, supplier.password):
-        return {"message": "Đăng nhập thành công", "user": "supplier"}
+    if customer and verify_password(signin_data.password, customer.password_hash):
+        return {"status": 1,
+            "message": "Đăng nhập thành công", 
+                "data": SignInReturn(
+                    username=customer.username,
+                    role_id=customer.role_id,
+                )}
+    
     else:
-        raise HTTPException(status_code=400, detail="Thông tin đăng nhập không hợp lệ")
+        return {"status": -1,
+            "message": "Đăng nhập không thành công", 
+                }

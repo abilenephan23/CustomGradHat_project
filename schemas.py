@@ -1,13 +1,14 @@
 from pydantic import BaseModel, EmailStr
 
-class CustomerSignUp(BaseModel):
+class UserSignUp(BaseModel):
     username: str
     email: EmailStr
     phone: str
     password: str
     address: str
+    role_id: int
 
-class SupplierSignUp(BaseModel):
+class ShopSignUp(BaseModel):
     shop_name: str
     address: str
     phone: str
@@ -17,3 +18,7 @@ class SupplierSignUp(BaseModel):
 class SignIn(BaseModel):
     username: str
     password: str
+
+class SignInReturn(BaseModel):
+    role_id: int
+    username: str

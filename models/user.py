@@ -1,22 +1,38 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship
 from database import Base
 
-class Customer(Base):
-    __tablename__ = "customers"
+class User(Base):
+    __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     phone = Column(String)
-    password = Column(String)
+    password_hash = Column(String)
     address = Column(String)
+    role_id = Column(Integer, ForeignKey("roles.role_id"))
 
-class Supplier(Base):
-    __tablename__ = "suppliers"
+    role = relationship("Role", back_populates="users")
+    shops = relationship("Shop", back_populates="owner")
 
-    id = Column(Integer, primary_key=True, index=True)
+
+class Shop(Base):
+    __tablename__ = "shops"
+
+    shop_id = Column(Integer, primary_key=True, index=True)
     shop_name = Column(String)
     address = Column(String)
     phone = Column(String)
     description = Column(String)
-    password = Column(String)
+    owner_id = Column(Integer, ForeignKey("users.user_id"))
+
+    owner = relationship("User", back_populates="shops")
+
+class Role(Base):
+    __tablename__ = "roles"
+
+    role_id = Column(Integer, primary_key=True, index=True)
+    role_name = Column(String)
+
+    users = relationship("User", back_populates="role")
