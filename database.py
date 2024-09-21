@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-SQLALCHEMY_DATABASE_URL = "postgresql://admin201exe:12345678@database-exe201.cxcsqkseiybf.ap-southeast-1.rds.amazonaws.com:5432/spotlight"  # Hoặc sử dụng PostgreSQL, MySQL
+SQLALCHEMY_DATABASE_URL = "postgresql://admin201exe:12345678@database-exe201.cxcsqkseiybf.ap-southeast-1.rds.amazonaws.com:5432/spotlight.v3"  # Hoặc sử dụng PostgreSQL, MySQL
 
 # Tạo engine kết nối với cơ sở dữ liệu PostgreSQL (loại bỏ check_same_thread)
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
