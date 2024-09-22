@@ -39,3 +39,5 @@ class SignInReturn(BaseModel):
 class SignUpReturn(BaseModel):
     role_id: int
     username: str
+class Token(BaseModel):
+    token: str
