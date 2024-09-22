@@ -16,6 +16,8 @@ class UserSignUp(BaseModel):
     phone: str
     password: str
     address: str
+    firstname: str
+    lastname: str
 
 class ShopSignUp(BaseModel):
     username: str
@@ -23,6 +25,8 @@ class ShopSignUp(BaseModel):
     phone: str
     password: str
     address: str
+    firstname: str
+    lastname: str
     shop_name: str
     shop_phone: str
     shop_address: str

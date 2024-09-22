@@ -88,6 +88,8 @@ def signup_customer(user: UserSignUp, db: Session = Depends(get_db)):
         phone=user.phone,
         password_hash=hashed_password,
         address=user.address,
+        firstname=user.firstname,
+        lastname=user.lastname,
         role_id=3 # Khách hàng,
     )
     db.add(new_customer)
@@ -101,7 +103,11 @@ def signup_customer(user: UserSignUp, db: Session = Depends(get_db)):
                 token=generate_jwt_token(
                     {
                     "role_id": new_customer.role_id,
-                    "username": new_customer.username
+                    "username": new_customer.username,
+                    "email":new_customer.email,
+                    "phone":new_customer.phone,
+                    "firstname":new_customer.firstname,
+                    "lastname":new_customer.lastname
                     },SECRET_KEY
                 )
             )
@@ -136,6 +142,8 @@ def signup_supplier(supplier: ShopSignUp, db: Session = Depends(get_db)):
         phone=supplier.phone,
         password_hash=hashed_password,
         address=supplier.address,
+        firstname=supplier.firstname,
+        lastname=supplier.lastname,
         role_id=2 # Chủ shop,
     )
     
@@ -172,7 +180,11 @@ def signup_supplier(supplier: ShopSignUp, db: Session = Depends(get_db)):
                 token=generate_jwt_token(
                     {
                     "role_id": new_user.role_id,
-                    "username": new_user.username
+                    "username": new_user.username,
+                    "email":new_user.email,
+                    "phone":new_user.phone,
+                    "firstname":new_user.firstname,
+                    "lastname":new_user.lastname
                     },SECRET_KEY
                 )
             )
@@ -190,7 +202,11 @@ def signin(signin_data: SignIn, db: Session = Depends(get_db)):
                 token=generate_jwt_token(
                     {
                     "role_id": customer.role_id,
-                    "username": customer.username
+                    "username": customer.username,
+                    "email":customer.email,
+                    "phone":customer.phone,
+                    "firstname":customer.firstname,
+                    "lastname":customer.lastname
                     },SECRET_KEY
                 )
             )

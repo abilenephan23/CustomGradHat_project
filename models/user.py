@@ -10,6 +10,8 @@ class User(Base):
     phone = Column(String)
     password_hash = Column(String)
     address = Column(String)
+    firstname = Column(String)
+    lastname = Column(String)
     role_id = Column(Integer, ForeignKey("roles.role_id"))
     role = relationship("Role", back_populates="users")
     shops = relationship("Shop", back_populates="owner")
