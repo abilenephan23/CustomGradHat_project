@@ -2,7 +2,9 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from database import engine, Base, get_db
-from models.user import User, Shop
+from models.user import User
+from models.shop import Shop
+from models.role import Role
 from schemas import *
 
 app = FastAPI()
@@ -25,7 +27,7 @@ def signup_customer(user: UserSignUp, db: Session = Depends(get_db)):
     if db_customer:
         return ResponseAPI(
                 status=-1,
-                message="Đăng ký không thành công",
+                message="Đăng ký không thành công do tài khoản đã tồn tại trong hệ thống",
                 data=None
             )
     hashed_password = get_password_hash(user.password)
@@ -35,7 +37,7 @@ def signup_customer(user: UserSignUp, db: Session = Depends(get_db)):
         phone=user.phone,
         password_hash=hashed_password,
         address=user.address,
-        role_id=user.role_id,
+        role_id=3 # Khách hàng,
     )
     db.add(new_customer)
     db.commit()
@@ -43,30 +45,63 @@ def signup_customer(user: UserSignUp, db: Session = Depends(get_db)):
     return ResponseAPI(
             status=1,
             message="Đăng ký thành công",
-            data= new_customer
+            data=SignUpReturn(
+                role_id=new_customer.role_id,
+                username=new_customer.username
+            )
         )
     
 
 @app.post("/signup/supplier/")
 def signup_supplier(supplier: ShopSignUp, db: Session = Depends(get_db)):
+
+    db_customer = db.query(User).filter(User.email == supplier.email).first()
+    if db_customer:
+        return ResponseAPI(
+                status=-1,
+                message="Đăng ký không thành công do tài khoản đã tồn tại trong hệ thống",
+                data=None
+            )
+
+    # tạo tài khoản
     hashed_password = get_password_hash(supplier.password)
-    new_supplier = Shop(
-        shop_name=supplier.shop_name,
-        address=supplier.address,
+    new_user = User(
+        username=supplier.username,
+        email=supplier.email,
         phone=supplier.phone,
-        description=supplier.description,
-        password=hashed_password
+        password_hash=hashed_password,
+        address=supplier.address,
+        role_id=2 # Chủ shop,
     )
-    db.add(new_supplier)
+    
+    db.add(new_user)
     db.commit()
-    db.refresh(new_supplier)
-    return {"message": "Đăng ký thành công", "supplier": new_supplier}
+    db.refresh(new_user)
+
+    # đăng ký shop
+    new_shop = Shop(
+        shop_name=supplier.shop_name,
+        address=supplier.shop_address,
+        phone=supplier.shop_phone,
+        description=supplier.shop_description,
+        owner_id=new_user.user_id
+    )
+    db.add(new_shop)
+    db.commit()
+    db.refresh(new_shop)
+
+    return ResponseAPI(
+        status=1,
+        message="Đăng ký shop thành công",
+        data=SignUpReturn(
+            role_id=new_user.role_id,
+            username=new_user.username
+        )
+    )
 
 @app.post("/signin/")
 def signin(signin_data: SignIn, db: Session = Depends(get_db)):
     customer = db.query(User).filter(User.username == signin_data.username).first()
-    supplier = db.query(Shop).filter(Shop.shop_name == signin_data.username).first()
-
     if customer and verify_password(signin_data.password, customer.password_hash):
         return ResponseAPI(
                 status=1,

@@ -16,19 +16,26 @@ class UserSignUp(BaseModel):
     phone: str
     password: str
     address: str
-    role_id: int
 
 class ShopSignUp(BaseModel):
-    shop_name: str
-    address: str
+    username: str
+    email: EmailStr
     phone: str
-    description: str
     password: str
+    address: str
+    shop_name: str
+    shop_phone: str
+    shop_address: str
+    shop_description: str
 
 class SignIn(BaseModel):
     username: str
     password: str
 
 class SignInReturn(BaseModel):
+    role_id: int
+    username: str
+
+class SignUpReturn(BaseModel):
     role_id: int
     username: str
