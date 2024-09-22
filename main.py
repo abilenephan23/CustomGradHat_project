@@ -78,6 +78,15 @@ def signup_supplier(supplier: ShopSignUp, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
+    # check is the shop_phone is unique
+    db_shop = db.query(Shop).filter(Shop.phone == supplier.shop_phone).first()
+    if db_shop:
+        return ResponseAPI(
+            status=-1,
+            message="Đăng ký shop thất bại do SĐT đã có người đăng ký trên hệ thống",
+            data=None
+        )
+
     # đăng ký shop
     new_shop = Shop(
         shop_name=supplier.shop_name,
