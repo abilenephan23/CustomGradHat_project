@@ -91,6 +91,7 @@ def signup_customer(user: UserSignUp, db: Session = Depends(get_db)):
         firstname=user.firstname,
         lastname=user.lastname,
         role_id=3 # Khách hàng,
+        status=True
     )
     db.add(new_customer)
     db.commit()
@@ -145,6 +146,7 @@ def signup_supplier(supplier: ShopSignUp, db: Session = Depends(get_db)):
         firstname=supplier.firstname,
         lastname=supplier.lastname,
         role_id=2 # Chủ shop,
+        status=False
     )
     
     db.add(new_user)
@@ -194,7 +196,14 @@ def signup_supplier(supplier: ShopSignUp, db: Session = Depends(get_db)):
 def signin(signin_data: SignIn, db: Session = Depends(get_db)):
     customer = db.query(User).filter(User.username == signin_data.username).first()
     if customer and verify_password(signin_data.password, customer.password_hash):
-        return ResponseAPI(
+        if customer.status == False:
+            return ResponseAPI(
+                status=-1,
+                message="Tài khoản đã bị khoá",
+                data=None
+            )
+        else:
+            return ResponseAPI(
                 status=1,
                 message="Đăng nhập thành công",
                 data=
@@ -217,23 +226,30 @@ def signin(signin_data: SignIn, db: Session = Depends(get_db)):
             message="Đăng nhập không thành công",
             data=None
         )
-                
+
+@app.post("/toggle-account-status/{username}/")  
 def toggle_account_status(username: str, db: Session = Depends(get_db)):
     # Tìm account theo username
-    account = db.query(Account).filter(Account.username == username).first()
+    account = db.query(User).filter(User.username == username).first()
     
     if account is None:
-        raise HTTPException(status_code=404, detail="Tài khoản không tồn tại")
+        raise ResponseAPI(
+            status=-1,
+            message="Không tìm thấy account",
+            data=None
+        )
     
     # Kiểm tra trạng thái account, nếu status là 0 (hoặc False) thì đặt là True
-    if account.status == False:
-        account.status = True
-    else:
+    
         # Nếu không, thì toggle ngược lại
-        account.status = not account.status
+    account.status = not account.status
 
     # Lưu thay đổi vào database
     db.commit()
     db.refresh(account)
 
-    return {"username": account.username, "new_status": account.status}
+    return ResponseAPI(
+        status=1,
+        message="Thay đổi trảng thái account thành công",
+        data=None
+    )
