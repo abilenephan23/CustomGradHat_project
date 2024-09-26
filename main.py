@@ -90,7 +90,7 @@ def signup_customer(user: UserSignUp, db: Session = Depends(get_db)):
         address=user.address,
         firstname=user.firstname,
         lastname=user.lastname,
-        role_id=3 # Khách hàng,
+        role_id=3, # Khách hàng,
         status=True
     )
     db.add(new_customer)
@@ -145,7 +145,7 @@ def signup_supplier(supplier: ShopSignUp, db: Session = Depends(get_db)):
         address=supplier.address,
         firstname=supplier.firstname,
         lastname=supplier.lastname,
-        role_id=2 # Chủ shop,
+        role_id=2, # Chủ shop,
         status=False
     )
     
