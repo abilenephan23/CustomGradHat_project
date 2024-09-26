@@ -12,7 +12,6 @@ from models.shop import Shop
 from models.role import Role
 from schemas import *
 from fastapi.middleware.cors import CORSMiddleware
-from models.account import Account
 
 load_dotenv()
 
