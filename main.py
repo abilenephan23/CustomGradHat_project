@@ -12,6 +12,7 @@ from models.shop import Shop
 from models.role import Role
 from schemas import *
 from fastapi.middleware.cors import CORSMiddleware
+from models.account import Account
 
 load_dotenv()
 
@@ -218,3 +219,22 @@ def signin(signin_data: SignIn, db: Session = Depends(get_db)):
             data=None
         )
                 
+def toggle_account_status(username: str, db: Session = Depends(get_db)):
+    # Tìm account theo username
+    account = db.query(Account).filter(Account.username == username).first()
+    
+    if account is None:
+        raise HTTPException(status_code=404, detail="Tài khoản không tồn tại")
+    
+    # Kiểm tra trạng thái account, nếu status là 0 (hoặc False) thì đặt là True
+    if account.status == False:
+        account.status = True
+    else:
+        # Nếu không, thì toggle ngược lại
+        account.status = not account.status
+
+    # Lưu thay đổi vào database
+    db.commit()
+    db.refresh(account)
+
+    return {"username": account.username, "new_status": account.status}
