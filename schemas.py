@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Any
+from typing import Any, Optional
 
 
 class ResponseAPI(BaseModel):
@@ -45,3 +45,33 @@ class SignUpReturn(BaseModel):
     username: str
 class Token(BaseModel):
     token: str
+
+class CategoryBase(BaseModel):
+    name: str
+
+class CategoryCreate(CategoryBase):
+    pass
+
+class Category(CategoryBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+class ItemBase(BaseModel):
+    name: str
+    category_id: int
+    price: int
+    description: str
+    image_url: str
+    available_customization: bool
+
+class ItemCreate(ItemBase):
+    pass        
+
+class Item(ItemBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+

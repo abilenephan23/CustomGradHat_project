@@ -239,9 +239,8 @@ def toggle_account_status(username: str, db: Session = Depends(get_db)):
             data=None
         )
     
-    # Kiểm tra trạng thái account, nếu status là 0 (hoặc False) thì đặt là True
-    
-        # Nếu không, thì toggle ngược lại
+    # Kiểm tra trạng thái account, nếu status là False thì đặt là True
+    # Nếu không, thì toggle ngược lại
     account.status = not account.status
 
     # Lưu thay đổi vào database
@@ -250,6 +249,53 @@ def toggle_account_status(username: str, db: Session = Depends(get_db)):
 
     return ResponseAPI(
         status=1,
-        message="Thay đổi trảng thái account thành công",
+        message="Thay đổi trạng thái account thành công",
+        data=None
+    )
+
+# tạo category
+@app.post("/categories/", response_model= Category)
+def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
+    db_category = db.query(Category).filter(Category.category_name == category.category_name).first()
+    if db_category:
+        raise ResponseAPI(
+            status=-1,
+            message="Category đã tồn tại",
+            data=None
+        )
+    new_category = Category(category_name=category.category_name)
+    db.add(new_category)
+    db.commit()
+    db.refresh(new_category)
+    return ResponseAPI(
+        status=1,
+        message="Thêm category thành công",
+        data=None
+    )
+
+# tạo item liên kết với category
+@app.post("/items/", response_model= Item)
+def create_item(item: ItemCreate, db: Session = Depends(get_db)):
+    db_item = db.query(Item).filter(Item.item_name == item.item_name).first()
+    if db_item:
+        raise ResponseAPI(
+            status=-1,
+            message="Item đã tồn tại",
+            data=None
+        )
+    new_item = Item(
+        item_name=item.item_name,
+        category_id=item.category_id,
+        price=item.price,
+        description=item.description,
+        image_url=item.image_url,
+        available_customization=item.available_customization
+    )
+    db.add(new_item)
+    db.commit()
+    db.refresh(new_item)
+    return ResponseAPI(
+        status=1,
+        message="Thêm item thành công",
         data=None
     )
