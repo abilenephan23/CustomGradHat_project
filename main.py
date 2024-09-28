@@ -91,7 +91,7 @@ def signup_customer(user: UserSignUp, db: Session = Depends(get_db)):
         firstname=user.firstname,
         lastname=user.lastname,
         role_id=3, # Khách hàng,
-        status=True
+        status='1'
     )
     db.add(new_customer)
     db.commit()
@@ -146,7 +146,7 @@ def signup_supplier(supplier: ShopSignUp, db: Session = Depends(get_db)):
         firstname=supplier.firstname,
         lastname=supplier.lastname,
         role_id=2, # Chủ shop,
-        status=False
+        status='0'
     )
     
     db.add(new_user)
@@ -196,7 +196,7 @@ def signup_supplier(supplier: ShopSignUp, db: Session = Depends(get_db)):
 def signin(signin_data: SignIn, db: Session = Depends(get_db)):
     customer = db.query(User).filter(User.username == signin_data.username).first()
     if customer and verify_password(signin_data.password, customer.password_hash):
-        if customer.status == False:
+        if customer.status == '0':
             return ResponseAPI(
                 status=-1,
                 message="Tài khoản đã bị khoá",

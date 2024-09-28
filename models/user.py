@@ -1,11 +1,13 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
+from sqlalchemy.dialects.postgresql import BIT
+
 from sqlalchemy.orm import relationship
 from database import Base
 
 class User(Base):
     __tablename__ = "users"
     user_id = Column(Integer, primary_key=True, index=True)
-    status = Column(Boolean)
+    status = Column(BIT(1))
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     phone = Column(String)
