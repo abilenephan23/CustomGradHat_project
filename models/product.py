@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from database import Base
+from sqlalchemy.dialects.postgresql import JSONB
 
 # bảng category lưu danh mục (nón, áo, banner)
 class Category(Base):
@@ -22,6 +23,6 @@ class Item(Base):
        price = Column(Integer)
        description = Column(String)
        image_url = Column(String)
-       available_customization = Column(Boolean)
+       available_customization = Column(JSONB)
        create_at = Column(Integer)
-       category = relationship("category", back_populates="items")
+       category = relationship("Category", back_populates="items")

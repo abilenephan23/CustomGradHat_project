@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Json
 from typing import Any, Optional
 
 
@@ -47,31 +47,17 @@ class Token(BaseModel):
     token: str
 
 class CategoryBase(BaseModel):
-    name: str
+    category_id: int
+    category_name: str
 
-class CategoryCreate(CategoryBase):
-    pass
-
-class Category(CategoryBase):
-    id: int
-
-    class Config:
-        orm_mode = True
 
 class ItemBase(BaseModel):
+    item_id: int
+    shop_id: int
     name: str
     category_id: int
     price: int
     description: str
     image_url: str
-    available_customization: bool
-
-class ItemCreate(ItemBase):
-    pass        
-
-class Item(ItemBase):
-    id: int
-
-    class Config:
-        orm_mode = True
+    available_customization: Json
 

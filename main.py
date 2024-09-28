@@ -10,6 +10,7 @@ from database import engine, Base, get_db
 from models.user import User
 from models.shop import Shop
 from models.role import Role
+from models.product import *
 from schemas import *
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -233,7 +234,7 @@ def toggle_account_status(username: str, db: Session = Depends(get_db)):
     account = db.query(User).filter(User.username == username).first()
     
     if account is None:
-        raise ResponseAPI(
+        return ResponseAPI(
             status=-1,
             message="Không tìm thấy account",
             data=None
@@ -254,48 +255,65 @@ def toggle_account_status(username: str, db: Session = Depends(get_db)):
     )
 
 # tạo category
-@app.post("/categories/", response_model= Category)
-def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
-    db_category = db.query(Category).filter(Category.category_name == category.category_name).first()
+@app.post("/categories/{categoryname}/",response_model= CategoryBase)
+def create_category(categoryname: str, db: Session = Depends(get_db)):
+    db_category = db.query(Category).filter(Category.category_name == categoryname).first()
     if db_category:
-        raise ResponseAPI(
+        return ResponseAPI(
             status=-1,
             message="Category đã tồn tại",
             data=None
         )
-    new_category = Category(category_name=category.category_name)
-    db.add(new_category)
-    db.commit()
-    db.refresh(new_category)
+    # tạo category
+    new_category = Category(category_name=categoryname)
+    print(new_category)
+    # db.add(new_category)
+    # db.commit()
+    # db.refresh(new_category)
     return ResponseAPI(
         status=1,
         message="Thêm category thành công",
-        data=None
+        data=CategoryBase(category_name=new_category.category_name)
     )
 
-# tạo item liên kết với category
-@app.post("/items/", response_model= Item)
-def create_item(item: ItemCreate, db: Session = Depends(get_db)):
-    db_item = db.query(Item).filter(Item.item_name == item.item_name).first()
-    if db_item:
-        raise ResponseAPI(
-            status=-1,
-            message="Item đã tồn tại",
-            data=None
-        )
-    new_item = Item(
-        item_name=item.item_name,
-        category_id=item.category_id,
-        price=item.price,
-        description=item.description,
-        image_url=item.image_url,
-        available_customization=item.available_customization
-    )
-    db.add(new_item)
-    db.commit()
-    db.refresh(new_item)
-    return ResponseAPI(
-        status=1,
-        message="Thêm item thành công",
-        data=None
-    )
+## api tạo item này vẫn còn bị lỗi, chưa xác định rõ được nên filter theo cái nào
+# # tạo item liên kết với category
+# @app.post("/items/{itemname}", response_model= ItemBase)
+# def create_item(itemname: str, db: Session = Depends(get_db)):
+#     db_item = db.query(Item).filter(Item.item_name == itemname).first()
+#     if db_item:
+#         return ResponseAPI(
+#             status=-1,
+#             message="Item đã tồn tại",
+#             data=None
+#         )
+#     new_item = Item(
+#         item_name=itemname,
+#         category_id=ItemBase.category_id,
+#         price=ItemBase.price,
+#         description=ItemBase.description,
+#         image_url=ItemBase.image_url,
+#         available_customization=ItemBase.available_customization
+#     )
+#     db.add(new_item)
+#     db.commit()
+#     db.refresh(new_item)
+#     return ResponseAPI(
+#         status=1,
+#         message="Thêm item thành công",
+#         data=
+#         Token(
+#             token=generate_jwt_token(
+#                 {
+#                 "item_id": new_item.item_id,
+#                 "shop_id": new_item.shop_id,
+#                 "name": new_item.item_name,
+#                 "category_id": new_item.category_id,
+#                 "price": new_item.price,
+#                 "description": new_item.description,
+#                 "image_url": new_item.image_url,
+#                 "available_customization": new_item.available_customization
+#                 },SECRET_KEY
+#             )
+#         )
+#     )
