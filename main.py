@@ -266,7 +266,7 @@ def create_category(categoryname: str, db: Session = Depends(get_db)):
         )
     # tạo category
     new_category = Category(category_name=categoryname)
-    print(new_category)
+    # print(new_category)
     # db.add(new_category)
     # db.commit()
     # db.refresh(new_category)
@@ -276,44 +276,30 @@ def create_category(categoryname: str, db: Session = Depends(get_db)):
         data=CategoryBase(category_name=new_category.category_name)
     )
 
-## api tạo item này vẫn còn bị lỗi, chưa xác định rõ được nên filter theo cái nào
-# # tạo item liên kết với category
-# @app.post("/items/{itemname}", response_model= ItemBase)
-# def create_item(itemname: str, db: Session = Depends(get_db)):
-#     db_item = db.query(Item).filter(Item.item_name == itemname).first()
-#     if db_item:
-#         return ResponseAPI(
-#             status=-1,
-#             message="Item đã tồn tại",
-#             data=None
-#         )
-#     new_item = Item(
-#         item_name=itemname,
-#         category_id=ItemBase.category_id,
-#         price=ItemBase.price,
-#         description=ItemBase.description,
-#         image_url=ItemBase.image_url,
-#         available_customization=ItemBase.available_customization
-#     )
-#     db.add(new_item)
-#     db.commit()
-#     db.refresh(new_item)
-#     return ResponseAPI(
-#         status=1,
-#         message="Thêm item thành công",
-#         data=
-#         Token(
-#             token=generate_jwt_token(
-#                 {
-#                 "item_id": new_item.item_id,
-#                 "shop_id": new_item.shop_id,
-#                 "name": new_item.item_name,
-#                 "category_id": new_item.category_id,
-#                 "price": new_item.price,
-#                 "description": new_item.description,
-#                 "image_url": new_item.image_url,
-#                 "available_customization": new_item.available_customization
-#                 },SECRET_KEY
-#             )
-#         )
-#     )
+# tạo item liên kết với category
+@app.post("/items/")
+def create_item(item: ItemBase, db: Session = Depends(get_db)):
+    new_item = Item(
+        shop_id = item.shop_id,
+        name=item.name,
+        category_id=item.category_id,
+        price=item.price,
+        description=item.description,
+        image_url=item.image_url,
+    )
+    # db.add(new_item)
+    # db.commit()
+    # db.refresh(new_item)
+    return ResponseAPI(
+        status=1,
+        message="Thêm item thành công",
+        data=
+        ItemBase(
+            shop_id = new_item.shop_id,
+            name=new_item.name,
+            category_id=new_item.category_id,
+            price=new_item.price,
+            description=new_item.description,
+            image_url=new_item.image_url
+        )
+    )

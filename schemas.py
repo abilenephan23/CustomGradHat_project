@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Json
+from pydantic import BaseModel, EmailStr
 from typing import Any, Optional
 
 
@@ -8,6 +8,7 @@ class ResponseAPI(BaseModel):
     data: Any
     class Config:
         arbitrary_types_allowed = True
+        orm_mode = True
 
 
 class UserSignUp(BaseModel):
@@ -52,12 +53,10 @@ class CategoryBase(BaseModel):
 
 
 class ItemBase(BaseModel):
-    item_id: int
     shop_id: int
     name: str
     category_id: int
     price: int
     description: str
     image_url: str
-    available_customization: Json
 
