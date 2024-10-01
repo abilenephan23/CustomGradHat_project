@@ -60,3 +60,7 @@ class ItemBase(BaseModel):
     description: str
     image_url: str
 
+class ItemDetail(ItemBase):
+    item_id: int
+    category_name: str
+

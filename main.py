@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 from datetime import datetime, timedelta,timezone
 from fastapi import FastAPI, Depends, HTTPException, status
+from typing import List
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from database import engine, Base, get_db
@@ -287,9 +288,10 @@ def create_item(item: ItemBase, db: Session = Depends(get_db)):
         description=item.description,
         image_url=item.image_url,
     )
-    # db.add(new_item)
-    # db.commit()
-    # db.refresh(new_item)
+    # print(new_item)
+    db.add(new_item)
+    db.commit()
+    db.refresh(new_item)
     return ResponseAPI(
         status=1,
         message="Thêm item thành công",
@@ -303,3 +305,58 @@ def create_item(item: ItemBase, db: Session = Depends(get_db)):
             image_url=new_item.image_url
         )
     )
+
+@app.get("/items/{itemid}/")
+def get_infor_item(itemid: int, db: Session = Depends(get_db)):
+    itemid = db.query(Item).filter(Item.item_id == itemid).first()
+    if itemid:
+        item_info = Item(
+            item_id = itemid.item_id,
+            shop_id = itemid.shop_id,
+            name=itemid.name,
+            category_id=itemid.category_id,
+            price=itemid.price,
+            description=itemid.description,
+            image_url=itemid.image_url
+        )
+        category_id = db.query(Category).filter(Category.category_id == itemid.category_id).first()
+        item_detail_info = ItemDetail(
+            item_id=item_info.item_id,
+            shop_id=item_info.shop_id,
+            name=item_info.name,
+            category_id=item_info.category_id,
+            category_name=category_id.category_name,
+            price=item_info.price,
+            description=item_info.description,
+            image_url=item_info.image_url
+        )
+        return ResponseAPI(
+            status=1,
+            message="Lấy item thành công",
+            data= item_detail_info
+        )
+    else:
+        return ResponseAPI(
+            status=-1,
+            message="Không tìm thấy item",
+            data=None
+        )
+
+@app.get("/items/", response_model=List[ItemBase])
+def get_all_item(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+    items = db.query(Item).join(Category).offset(skip).limit(limit).all()
+    items_response = [
+        ItemDetail(
+            item_id=item.item_id,
+            shop_id=item.shop_id,
+            name=item.name,
+            category_id=item.category_id,
+            category_name=item.category.category_name,
+            price=item.price,
+            description=item.description,
+            image_url=item.image_url,
+        )
+        for item in items
+    ]
+
+    return items_response
