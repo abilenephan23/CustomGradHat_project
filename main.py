@@ -169,7 +169,8 @@ def signup_supplier(supplier: ShopSignUp, db: Session = Depends(get_db)):
         address=supplier.shop_address,
         phone=supplier.shop_phone,
         description=supplier.shop_description,
-        owner_id=new_user.user_id
+        owner_id=new_user.user_id,
+        status='1'
     )
     db.add(new_shop)
     db.commit()
@@ -224,7 +225,7 @@ def signin(signin_data: SignIn, db: Session = Depends(get_db)):
     else:
         return ResponseAPI(
             status=-1,
-            message="Đăng nhập không thành công",
+            message="Đăng nhập không thành công do sai mật khẩu hoặc tài khoản",
             data=None
         )
 
