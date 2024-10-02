@@ -343,9 +343,24 @@ def get_infor_item(itemid: int, db: Session = Depends(get_db)):
             data=None
         )
 
-@app.get("/items/", response_model=List[ItemBase])
-def get_all_item(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    items = db.query(Item).join(Category).offset(skip).limit(limit).all()
+@app.get("/items/", response_model=ResponseAPI)
+def get_all_item(
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),  # Start page from 1 (1-based index)
+    limit: int = Query(10, ge=1),  # Limit for pagination
+):
+    skip = (page - 1) * limit
+
+    # Query to get total number of items
+    total_items = db.query(Item).count()
+    
+    # Query to get the paginated users
+    items = db.query(Item).offset(skip).limit(limit).all()
+
+    total_pages = (total_items + limit - 1) // limit  # Round up
+    next_page = page + 1 if page < total_pages else None
+    prev_page = page - 1 if page > 1 else None
+
     items_response = [
         ItemDetail(
             item_id=item.item_id,
@@ -360,7 +375,20 @@ def get_all_item(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
         for item in items
     ]
 
-    return items_response
+    return ResponseAPI(
+    status=1,
+    message="Lấy danh sách sản phẩm thành công!",
+    data={
+        "users": items_response,
+        "pagination": {
+            "total_records": total_items,
+            "total_pages": total_pages,
+            "current_page": page,
+            "next_page": next_page,
+            "prev_page": prev_page
+        }
+    }
+)
 
 # API to get all users except "admin", with pagination
 @app.get("/users", response_model=ResponseAPI)
