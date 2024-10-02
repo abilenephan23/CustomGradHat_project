@@ -379,7 +379,7 @@ def get_all_item(
     status=1,
     message="Lấy danh sách sản phẩm thành công!",
     data={
-        "users": items_response,
+        "items": items_response,
         "pagination": {
             "total_records": total_items,
             "total_pages": total_pages,
