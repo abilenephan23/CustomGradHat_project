@@ -1,11 +1,22 @@
 from pydantic import BaseModel, EmailStr
 from typing import Any, Optional
+from models.role import Role
+
 
 
 class ResponseAPI(BaseModel):
     status: int
     message: str
     data: Any
+    class Config:
+        arbitrary_types_allowed = True
+        orm_mode = True
+
+class ResponseAPIPagination(BaseModel):
+    status: int
+    message: str
+    data: Any
+    pagination: Any
     class Config:
         arbitrary_types_allowed = True
         orm_mode = True
@@ -63,4 +74,25 @@ class ItemBase(BaseModel):
 class ItemDetail(ItemBase):
     item_id: int
     category_name: str
+
+class RoleResponse(BaseModel):
+    role_id: int
+    role_name: str
+
+    class Config:
+        orm_mode = True
+
+# Pydantic schema for User (to serialize the response)
+class UserResponse(BaseModel):
+    user_id: int
+    username: str
+    email: str
+    firstname: str
+    lastname: str
+    phone: str
+    role: RoleResponse  # Use the RoleResponse model
+    status: str
+
+    class Config:
+        orm_mode = True
 

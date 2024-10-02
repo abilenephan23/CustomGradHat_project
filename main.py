@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 
 from datetime import datetime, timedelta,timezone
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status,Query
 from typing import List
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -361,3 +361,56 @@ def get_all_item(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     ]
 
     return items_response
+
+# API to get all users except "admin", with pagination
+@app.get("/users", response_model=ResponseAPIPagination)
+def get_users(
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),  # Start page from 1 (1-based index)
+    limit: int = Query(10, ge=1),  # Limit for pagination
+):
+    # Calculate skip value based on 1-based page index
+    skip = (page - 1) * limit
+
+    # Query to get total number of users except the one with username 'admin'
+    total_users = db.query(User).filter(User.username != "admin").count()
+    
+    # Query to get the paginated users
+    users = db.query(User).filter(User.username != "admin").offset(skip).limit(limit).all()
+
+    # Calculate pagination details
+    total_pages = (total_users + limit - 1) // limit  # Round up
+    next_page = page + 1 if page < total_pages else None
+    prev_page = page - 1 if page > 1 else None
+
+    # Convert SQLAlchemy User objects to dictionary or required fields for Pydantic validation
+    user_responses = [
+        UserResponse(
+            user_id=user.user_id,
+            username=user.username,
+            email=user.email,
+            phone=user.phone,
+            firstname=user.firstname,
+            lastname=user.lastname,
+            role=RoleResponse(  # Pass the Role object
+                role_id=user.role.role_id,
+                role_name=user.role.role_name,
+            ),            
+            status=user.status
+        ) 
+        for user in users
+    ]
+
+    # Return the response with paginated data and pagination metadata
+    return ResponseAPIPagination(
+        status=1,
+        message="Lấy danh sách người dùng thành công!",
+        data=user_responses,
+        pagination={
+            "total_records": total_users,
+            "current_page": page,  # Return the actual page number
+            "total_pages": total_pages,
+            "next_page": next_page,
+            "prev_page": prev_page,
+        }
+    )
