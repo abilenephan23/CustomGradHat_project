@@ -12,15 +12,6 @@ class ResponseAPI(BaseModel):
         arbitrary_types_allowed = True
         orm_mode = True
 
-class ResponseAPIPagination(BaseModel):
-    status: int
-    message: str
-    data: Any
-    pagination: Any
-    class Config:
-        arbitrary_types_allowed = True
-        orm_mode = True
-
 
 class UserSignUp(BaseModel):
     username: str

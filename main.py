@@ -363,7 +363,7 @@ def get_all_item(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     return items_response
 
 # API to get all users except "admin", with pagination
-@app.get("/users", response_model=ResponseAPIPagination)
+@app.get("/users", response_model=ResponseAPI)
 def get_users(
     db: Session = Depends(get_db),
     page: int = Query(1, ge=1),  # Start page from 1 (1-based index)
@@ -402,15 +402,17 @@ def get_users(
     ]
 
     # Return the response with paginated data and pagination metadata
-    return ResponseAPIPagination(
-        status=1,
-        message="Lấy danh sách người dùng thành công!",
-        data=user_responses,
-        pagination={
+    return ResponseAPI(
+    status=1,
+    message="Lấy danh sách người dùng thành công!",
+    data={
+        "users": user_responses,
+        "pagination": {
             "total_records": total_users,
-            "current_page": page,  # Return the actual page number
             "total_pages": total_pages,
+            "current_page": page,
             "next_page": next_page,
-            "prev_page": prev_page,
+            "prev_page": prev_page
         }
-    )
+    }
+)
