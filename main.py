@@ -444,3 +444,57 @@ def get_users(
         }
     }
 )
+
+@app.get("/shop-items/{shop_id}")
+def get_shop_items(
+    shop_id = int,
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),  # Start page from 1 (1-based index)
+    limit: int = Query(10, ge=1),
+):
+    
+    # Tìm shop
+    shop = db.query(Shop).filter(Shop.shop_id == shop_id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    
+    skip = (page - 1) * limit
+    total_items = db.query(Item).count()
+    items = db.query(Item).filter(Item.shop_id == shop_id).offset(skip).limit(limit).all()
+    total_pages = (total_items + limit - 1) // limit  # Round up
+    next_page = page + 1 if page < total_pages else None
+    prev_page = page - 1 if page > 1 else None
+    items_response = [
+        ItemDetail(
+            item_id=item.item_id,
+            shop_id=item.shop_id,
+            name=item.name,
+            category_id=item.category_id,
+            category_name=item.category.category_name,
+            price=item.price,
+            description=item.description,
+            image_url=item.image_url,
+        )
+        for item in items
+    ]
+    return ResponseAPI(
+        status=1,
+        message="Lấy danh sách san pham cua shop thanh cong!",
+        data = {
+            "items": items_response,
+            "pagination": {
+                "total_records": total_items,
+                "total_pages": total_pages,
+                "current_page": page,
+                "next_page": next_page,
+                "prev_page": prev_page
+            }
+        })
+
+# api tạo đơn hàng
+# @app.post("/orders/", response_model=ResponseAPI)
+# def create_order(order: OrderCreate, db: Session = Depends(get_db)):
+#     total_price = 0
+#     order_items = []
+#     for item_data in order.items:
+#         item = db.query(Item).filter(Item.item_id == item_data.item_id).first()
