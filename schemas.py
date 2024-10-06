@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from typing import Any, Optional
 from models.role import Role
+from typing import List
 
 
 
@@ -53,6 +54,23 @@ class CategoryBase(BaseModel):
     category_id: int
     category_name: str
 
+# Define a schema for Color input
+class ColorCreate(BaseModel):
+    color_label: str
+
+# Define a schema for Size input
+class SizeCreate(BaseModel):
+    size_label: str
+
+
+class ColorDTO(BaseModel):
+    color_id: int
+    color_label: str
+
+
+class SizeDTO(BaseModel):
+    size_id: int
+    size_label: str
 
 class ItemBase(BaseModel):
     shop_id: int
@@ -61,10 +79,18 @@ class ItemBase(BaseModel):
     price: int
     description: str
     image_url: str
+    colors: List[ColorCreate]
+    sizes: List[SizeCreate]
+
+    class Config:
+        orm_mode = True
+
 
 class ItemDetail(ItemBase):
     item_id: int
     category_name: str
+    colors: List[ColorDTO]  # Use ColorDTO here
+    sizes: List[SizeDTO]    # Use SizeDTO here
 
 class RoleResponse(BaseModel):
     role_id: int
@@ -117,3 +143,4 @@ class OrderRespond(BaseModel):
 
     class Config:
         orm_mode = True
+
