@@ -103,17 +103,17 @@ class OrderCreate(BaseModel):
         orm_mode = True
 
 class OrderRespond(BaseModel):
-    order_id = int
-    customer_id = int
-    quantity = int
-    total_price = int
-    order_at = str
-    order_status = int
-    payment_id = int
-    response = str
-    img_url = str
-    variation_id = int
-    customization_id = int
+    order_id: int
+    customer_id: int
+    quantity: int
+    total_price: int
+    order_at: str
+    order_status: int
+    payment_id: int
+    response: str
+    img_url: str
+    variation_id: int
+    customization_id: int
 
     class Config:
         orm_mode = True
