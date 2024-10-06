@@ -79,6 +79,7 @@ class ItemBase(BaseModel):
     price: int
     description: str
     image_url: str
+    quantity: int
     colors: List[ColorCreate]
     sizes: List[SizeCreate]
 

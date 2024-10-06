@@ -24,6 +24,7 @@ class Item(Base):
     description = Column(String)
     image_url = Column(String)
     create_at = Column(DateTime(timezone=True), server_default=func.now())
+    quantity = Column(Integer, default=0)
 
     # Relationships
     category = relationship("Category", back_populates="items")

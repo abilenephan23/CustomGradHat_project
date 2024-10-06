@@ -331,6 +331,7 @@ def create_item(item: ItemBase, db: Session = Depends(get_db)):
         price=item.price,
         description=item.description,
         image_url=item.image_url,
+        quantity=item.quantity
     )
 
     # Add the new item to the database
@@ -363,6 +364,7 @@ def create_item(item: ItemBase, db: Session = Depends(get_db)):
             "price": new_item.price,
             "description": new_item.description,
             "image_url": new_item.image_url,
+            "quantity": new_item.quantity,
             "colors": [color.color_label for color in item.colors],
             "sizes": [size.size_label for size in item.sizes]
         }
@@ -396,6 +398,7 @@ def get_all_item(
             price=item.price,
             description=item.description,
             image_url=item.image_url,
+            quantity=item.quantity,
             # Create a dictionary for each color using ColorCreate
             colors=[ColorDTO(color_id=color.color_id, color_label=color.color_label) 
                     for color in db.query(Color).join(ItemColors).filter(ItemColors.item_id == item.item_id).all()],
@@ -510,6 +513,7 @@ def get_shop_items(
             price=item.price,
             description=item.description,
             image_url=item.image_url,
+            quantity=item.quantity,
             # Create a dictionary for each color using ColorCreate
             colors=[ColorDTO(color_id=color.color_id, color_label=color.color_label) 
                     for color in db.query(Color).join(ItemColors).filter(ItemColors.item_id == item.item_id).all()],
