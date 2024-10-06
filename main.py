@@ -198,37 +198,61 @@ def signup_supplier(supplier: ShopSignUp, db: Session = Depends(get_db)):
 @app.post("/signin/")
 def signin(signin_data: SignIn, db: Session = Depends(get_db)):
     customer = db.query(User).filter(User.username == signin_data.username).first()
+
     if customer and verify_password(signin_data.password, customer.password_hash):
         if customer.status == '0':
             return ResponseAPI(
                 status=-1,
-                message="Tài khoản đã bị khoá",
+                message="Tài khoản đã bị khóa",
                 data=None
             )
         else:
-            return ResponseAPI(
-                status=1,
-                message="Đăng nhập thành công",
-                data=
-                Token(
-                token=generate_jwt_token(
-                    {
-                    "role_id": customer.role_id,
-                    "username": customer.username,
-                    "email":customer.email,
-                    "phone":customer.phone,
-                    "firstname":customer.firstname,
-                    "lastname":customer.lastname
-                    },SECRET_KEY
+            # If the user is a shop owner (role_id == 2), include shop ID in the token as a string
+            if customer.role_id == 2:
+                shop_id = str(customer.shops[0].shop_id) if customer.shops else None  # Get the first shop ID as a string
+                return ResponseAPI(
+                    status=1,
+                    message="Đăng nhập thành công",
+                    data=Token(
+                        token=generate_jwt_token(
+                            {
+                                "role_id": customer.role_id,
+                                "username": customer.username,
+                                "email": customer.email,
+                                "phone": customer.phone,
+                                "firstname": customer.firstname,
+                                "lastname": customer.lastname,
+                                "shop_id": shop_id  # Include shop ID as a string in the token
+                            },
+                            SECRET_KEY
+                        )
+                    )
                 )
-            )
-        )
+            else:
+                return ResponseAPI(
+                    status=1,
+                    message="Đăng nhập thành công",
+                    data=Token(
+                        token=generate_jwt_token(
+                            {
+                                "role_id": customer.role_id,
+                                "username": customer.username,
+                                "email": customer.email,
+                                "phone": customer.phone,
+                                "firstname": customer.firstname,
+                                "lastname": customer.lastname
+                            },
+                            SECRET_KEY
+                        )
+                    )
+                )
     else:
         return ResponseAPI(
             status=-1,
             message="Đăng nhập không thành công do sai mật khẩu hoặc tài khoản",
             data=None
         )
+
 
 @app.post("/toggle-account-status/{username}/")  
 def toggle_account_status(username: str, db: Session = Depends(get_db)):
