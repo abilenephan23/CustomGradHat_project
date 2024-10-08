@@ -14,6 +14,7 @@ from models.role import Role
 from models.product import *
 from schemas import *
 from fastapi.middleware.cors import CORSMiddleware
+from crud import *
 
 load_dotenv()
 
@@ -491,10 +492,66 @@ def get_shop_items(
             }
         })
 
-# api tạo đơn hàng
-# @app.post("/orders/", response_model=ResponseAPI)
-# def create_order(order: OrderCreate, db: Session = Depends(get_db)):
-#     total_price = 0
-#     order_items = []
-#     for item_data in order.items:
-#         item = db.query(Item).filter(Item.item_id == item_data.item_id).first()
+# api customize
+@app.post("/customizations")
+def create_customization(customization: CustomizationCreate, db: Session = Depends(get_db)):
+    return create_customizations(db, customization)
+
+@app.get("/customizations/{customization_id}")
+def read_customization(customization_id : int, db: Session = Depends(get_db)):
+    return get_customization_by_id(db, customization_id)
+
+@app.get("/customizations", response_model=ResponseAPI)
+def read_custom_by_page(
+    db: Session = Depends(get_db), 
+    page: int = Query(1, ge=1), 
+    limit: int = Query(10, ge=1)):
+    # Calculate skip value based on 1-based page index
+    skip = (page - 1) * limit
+
+    # Query to get total number of customizations
+    total_custom = db.query(Customization).count()
+    
+    # Query to get the paginated customizations
+    customs = db.query(Customization).offset(skip).limit(limit).all()
+
+    # Calculate pagination details
+    total_pages = (total_custom + limit - 1) // limit  # Round up
+    next_page = page + 1 if page < total_pages else None
+    prev_page = page - 1 if page > 1 else None
+
+    # Convert SQLAlchemy User objects to dictionary or required fields for Pydantic validation
+    custom_responses = [
+        CustomizationResponse(
+            customization_id=custom.customization_id,
+            item_id=custom.item_id,
+            price_adjustment=custom.price_adjustment,
+            image_url=custom.image_url,
+            description=custom.description,
+            is_shop_owner_created=custom.is_shop_owner_created
+        ) 
+        for custom in customs
+    ]
+
+    # Return the response with paginated data and pagination metadata
+    return ResponseAPI(
+    status=1,
+    message="Lấy danh sách custom thành công!",
+    data={
+        "customizations": custom_responses,
+        "pagination": {
+            "total_records": total_custom,
+            "total_pages": total_pages,
+            "current_page": page,
+            "next_page": next_page,
+            "prev_page": prev_page
+        }
+    }
+    )
+@app.put("/customizations/{customization_id}")
+def update_customization(customization_id: int, customization: CustomizationCreate, db: Session = Depends(get_db)):
+    return update_customizations(db, customization_id, customization)
+
+@app.delete("/customizations/{customization_id}")
+def delete_customization(customization_id: int, db: Session = Depends(get_db)):
+    return delete_customizations(db, customization_id)

@@ -14,3 +14,5 @@ class Shop(Base):
     description = Column(String)
     owner_id = Column(Integer, ForeignKey("users.user_id"))
     owner = relationship("User", back_populates="shops")
+    items = relationship("Item", back_populates="shop")
+    
