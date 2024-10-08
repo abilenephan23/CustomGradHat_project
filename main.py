@@ -199,37 +199,61 @@ def signup_supplier(supplier: ShopSignUp, db: Session = Depends(get_db)):
 @app.post("/signin/")
 def signin(signin_data: SignIn, db: Session = Depends(get_db)):
     customer = db.query(User).filter(User.username == signin_data.username).first()
+
     if customer and verify_password(signin_data.password, customer.password_hash):
         if customer.status == '0':
             return ResponseAPI(
                 status=-1,
-                message="Tài khoản đã bị khoá",
+                message="Tài khoản đã bị khóa",
                 data=None
             )
         else:
-            return ResponseAPI(
-                status=1,
-                message="Đăng nhập thành công",
-                data=
-                Token(
-                token=generate_jwt_token(
-                    {
-                    "role_id": customer.role_id,
-                    "username": customer.username,
-                    "email":customer.email,
-                    "phone":customer.phone,
-                    "firstname":customer.firstname,
-                    "lastname":customer.lastname
-                    },SECRET_KEY
+            # If the user is a shop owner (role_id == 2), include shop ID in the token as a string
+            if customer.role_id == 2:
+                shop_id = str(customer.shops[0].shop_id) if customer.shops else None  # Get the first shop ID as a string
+                return ResponseAPI(
+                    status=1,
+                    message="Đăng nhập thành công",
+                    data=Token(
+                        token=generate_jwt_token(
+                            {
+                                "role_id": customer.role_id,
+                                "username": customer.username,
+                                "email": customer.email,
+                                "phone": customer.phone,
+                                "firstname": customer.firstname,
+                                "lastname": customer.lastname,
+                                "shop_id": shop_id  # Include shop ID as a string in the token
+                            },
+                            SECRET_KEY
+                        )
+                    )
                 )
-            )
-        )
+            else:
+                return ResponseAPI(
+                    status=1,
+                    message="Đăng nhập thành công",
+                    data=Token(
+                        token=generate_jwt_token(
+                            {
+                                "role_id": customer.role_id,
+                                "username": customer.username,
+                                "email": customer.email,
+                                "phone": customer.phone,
+                                "firstname": customer.firstname,
+                                "lastname": customer.lastname
+                            },
+                            SECRET_KEY
+                        )
+                    )
+                )
     else:
         return ResponseAPI(
             status=-1,
             message="Đăng nhập không thành công do sai mật khẩu hoặc tài khoản",
             data=None
         )
+
 
 @app.post("/toggle-account-status/{username}/")  
 def toggle_account_status(username: str, db: Session = Depends(get_db)):
@@ -279,70 +303,73 @@ def create_category(categoryname: str, db: Session = Depends(get_db)):
         data=CategoryBase(category_name=new_category.category_name)
     )
 
-# tạo item liên kết với category
-@app.post("/items/")
+@app.post("/items/", response_model=ResponseAPI)
 def create_item(item: ItemBase, db: Session = Depends(get_db)):
+
+    # Create and add the colors to the database and return the color IDs
+    color_ids = []
+    for color in item.colors:
+        new_color = Color(color_label=color.color_label)
+        db.add(new_color)
+        db.commit()
+        db.refresh(new_color)
+        color_ids.append(new_color.color_id)
+
+    # Create and add the sizes to the database and return the size IDs
+    size_ids = []
+    for size in item.sizes:
+        new_size = Size(size_label=size.size_label)
+        db.add(new_size)
+        db.commit()
+        db.refresh(new_size)
+        size_ids.append(new_size.size_id)
+
+    # Create the new item
     new_item = Item(
-        shop_id = item.shop_id,
+        shop_id=item.shop_id,
         name=item.name,
         category_id=item.category_id,
         price=item.price,
         description=item.description,
         image_url=item.image_url,
+        quantity=item.quantity
     )
-    # print(new_item)
+
+    # Add the new item to the database
     db.add(new_item)
     db.commit()
     db.refresh(new_item)
-    return ResponseAPI(
-        status=1,
-        message="Thêm item thành công",
-        data=
-        ItemBase(
-            shop_id = new_item.shop_id,
-            name=new_item.name,
-            category_id=new_item.category_id,
-            price=new_item.price,
-            description=new_item.description,
-            image_url=new_item.image_url
-        )
-    )
 
-@app.get("/items/{itemid}/")
-def get_infor_item(itemid: int, db: Session = Depends(get_db)):
-    itemid = db.query(Item).filter(Item.item_id == itemid).first()
-    if itemid:
-        item_info = Item(
-            item_id = itemid.item_id,
-            shop_id = itemid.shop_id,
-            name=itemid.name,
-            category_id=itemid.category_id,
-            price=itemid.price,
-            description=itemid.description,
-            image_url=itemid.image_url
-        )
-        category_id = db.query(Category).filter(Category.category_id == itemid.category_id).first()
-        item_detail_info = ItemDetail(
-            item_id=item_info.item_id,
-            shop_id=item_info.shop_id,
-            name=item_info.name,
-            category_id=item_info.category_id,
-            category_name=category_id.category_name,
-            price=item_info.price,
-            description=item_info.description,
-            image_url=item_info.image_url
-        )
-        return ResponseAPI(
-            status=1,
-            message="Lấy item thành công",
-            data= item_detail_info
-        )
-    else:
-        return ResponseAPI(
-            status=-1,
-            message="Không tìm thấy item",
-            data=None
-        )
+    # Add the colors to the ItemColors table
+    for color_id in color_ids:
+        item_color = ItemColors(item_id=new_item.item_id, color_id=color_id)
+        db.add(item_color)
+    
+    # Add the sizes to the ItemSizes table
+    for size_id in size_ids:
+        item_size = ItemSizes(item_id=new_item.item_id, size_id=size_id)
+        db.add(item_size)
+    
+    # Commit the colors and sizes to the database
+    db.commit()
+
+    # Return a response
+    return {
+        "status": 1,
+        "message": "Item created successfully",
+        "data": {
+            "item_id": new_item.item_id,
+            "shop_id": new_item.shop_id,
+            "name": new_item.name,
+            "category_id": new_item.category_id,
+            "price": new_item.price,
+            "description": new_item.description,
+            "image_url": new_item.image_url,
+            "quantity": new_item.quantity,
+            "colors": [color.color_label for color in item.colors],
+            "sizes": [size.size_label for size in item.sizes]
+        }
+    }
 
 @app.get("/items/", response_model=ResponseAPI)
 def get_all_item(
@@ -355,7 +382,7 @@ def get_all_item(
     # Query to get total number of items
     total_items = db.query(Item).count()
     
-    # Query to get the paginated users
+    # Query to get the paginated items
     items = db.query(Item).offset(skip).limit(limit).all()
 
     total_pages = (total_items + limit - 1) // limit  # Round up
@@ -372,24 +399,32 @@ def get_all_item(
             price=item.price,
             description=item.description,
             image_url=item.image_url,
+            quantity=item.quantity,
+            # Create a dictionary for each color using ColorCreate
+            colors=[ColorDTO(color_id=color.color_id, color_label=color.color_label) 
+                    for color in db.query(Color).join(ItemColors).filter(ItemColors.item_id == item.item_id).all()],
+            # Create a dictionary for each size using SizeCreate
+            sizes=[SizeDTO(size_id=size.size_id, size_label=size.size_label) 
+                   for size in db.query(Size).join(ItemSizes).filter(ItemSizes.item_id == item.item_id).all()]
         )
         for item in items
     ]
 
     return ResponseAPI(
-    status=1,
-    message="Lấy danh sách sản phẩm thành công!",
-    data={
-        "items": items_response,
-        "pagination": {
-            "total_records": total_items,
-            "total_pages": total_pages,
-            "current_page": page,
-            "next_page": next_page,
-            "prev_page": prev_page
+        status=1,
+        message="Lấy danh sách sản phẩm thành công!",
+        data={
+            "items": items_response,
+            "pagination": {
+                "total_records": total_items,
+                "total_pages": total_pages,
+                "current_page": page,
+                "next_page": next_page,
+                "prev_page": prev_page
+            }
         }
-    }
-)
+    )
+
 
 # API to get all users except "admin", with pagination
 @app.get("/users", response_model=ResponseAPI)
@@ -457,7 +492,11 @@ def get_shop_items(
     # Tìm shop
     shop = db.query(Shop).filter(Shop.shop_id == shop_id).first()
     if not shop:
-        raise HTTPException(status_code=404, detail="Shop not found")
+        return ResponseAPI(
+            status=-1,
+            message="Không tìm thấy shop",
+            data=None
+        )
     
     skip = (page - 1) * limit
     total_items = db.query(Item).count()
@@ -475,6 +514,13 @@ def get_shop_items(
             price=item.price,
             description=item.description,
             image_url=item.image_url,
+            quantity=item.quantity,
+            # Create a dictionary for each color using ColorCreate
+            colors=[ColorDTO(color_id=color.color_id, color_label=color.color_label) 
+                    for color in db.query(Color).join(ItemColors).filter(ItemColors.item_id == item.item_id).all()],
+            # Create a dictionary for each size using SizeCreate
+            sizes=[SizeDTO(size_id=size.size_id, size_label=size.size_label) 
+                   for size in db.query(Size).join(ItemSizes).filter(ItemSizes.item_id == item.item_id).all()]
         )
         for item in items
     ]
@@ -492,6 +538,7 @@ def get_shop_items(
             }
         })
 
+<<<<<<< HEAD
 # api customize
 @app.post("/customizations")
 def create_customization(customization: CustomizationCreate, db: Session = Depends(get_db)):
@@ -555,3 +602,29 @@ def update_customization(customization_id: int, customization: CustomizationCrea
 @app.delete("/customizations/{customization_id}")
 def delete_customization(customization_id: int, db: Session = Depends(get_db)):
     return delete_customizations(db, customization_id)
+=======
+# API get all categories
+@app.get("/categories", response_model=ResponseAPI)
+def get_categories(db: Session = Depends(get_db)):
+    categories = db.query(Category).all()
+    categories_response = [
+        CategoryBase(
+            category_id=category.category_id,
+            category_name=category.category_name
+        )
+        for category in categories
+    ]
+    return ResponseAPI(
+        status=1,
+        message="Lấy danh sách category thanh cong!",
+        data=categories_response
+    )
+
+# api tạo đơn hàng
+# @app.post("/orders/", response_model=ResponseAPI)
+# def create_order(order: OrderCreate, db: Session = Depends(get_db)):
+#     total_price = 0
+#     order_items = []
+#     for item_data in order.items:
+#         item = db.query(Item).filter(Item.item_id == item_data.item_id).first()
+>>>>>>> 6951136e271300aea12c7ae16aecd43e83e7d593
