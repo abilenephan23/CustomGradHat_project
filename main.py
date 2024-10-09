@@ -405,7 +405,16 @@ def get_all_item(
                     for color in db.query(Color).join(ItemColors).filter(ItemColors.item_id == item.item_id).all()],
             # Create a dictionary for each size using SizeCreate
             sizes=[SizeDTO(size_id=size.size_id, size_label=size.size_label) 
-                   for size in db.query(Size).join(ItemSizes).filter(ItemSizes.item_id == item.item_id).all()]
+                   for size in db.query(Size).join(ItemSizes).filter(ItemSizes.item_id == item.item_id).all()],
+            status=item.status,
+            shop= ShopDetail(
+                shop_id=item.shop_id,
+                shop_name=item.shop.shop_name,
+                address=item.shop.address,
+                phone=item.shop.phone,
+                description=item.shop.description,
+                status=item.shop.status
+            )           
         )
         for item in items
     ]
@@ -456,11 +465,21 @@ def get_users(
             phone=user.phone,
             firstname=user.firstname,
             lastname=user.lastname,
+            address=user.address,
             role=RoleResponse(  # Pass the Role object
                 role_id=user.role.role_id,
                 role_name=user.role.role_name,
             ),            
-            status=user.status
+            status=user.status,
+             # Handle the case when user does not have a shop (set shop to None)
+            shop=ShopDetail(
+                shop_id=user.shops[0].shop_id,
+                shop_name=user.shops[0].shop_name,
+                address=user.shops[0].address,
+                phone=user.shops[0].phone,
+                description=user.shops[0].description,
+                status=user.shops[0].status
+            ) if user.shops else None
         ) 
         for user in users
     ]
@@ -520,7 +539,16 @@ def get_shop_items(
                     for color in db.query(Color).join(ItemColors).filter(ItemColors.item_id == item.item_id).all()],
             # Create a dictionary for each size using SizeCreate
             sizes=[SizeDTO(size_id=size.size_id, size_label=size.size_label) 
-                   for size in db.query(Size).join(ItemSizes).filter(ItemSizes.item_id == item.item_id).all()]
+                   for size in db.query(Size).join(ItemSizes).filter(ItemSizes.item_id == item.item_id).all()],
+            status=item.status,
+            shop=ShopDetail(
+                shop_id=shop.shop_id,
+                shop_name=shop.shop_name,
+                address=shop.address,
+                phone=shop.phone,
+                description=shop.description,
+                status=shop.status
+            )       
         )
         for item in items
     ]
@@ -538,7 +566,6 @@ def get_shop_items(
             }
         })
 
-<<<<<<< HEAD
 # api customize
 @app.post("/customizations")
 def create_customization(customization: CustomizationCreate, db: Session = Depends(get_db)):
@@ -602,7 +629,6 @@ def update_customization(customization_id: int, customization: CustomizationCrea
 @app.delete("/customizations/{customization_id}")
 def delete_customization(customization_id: int, db: Session = Depends(get_db)):
     return delete_customizations(db, customization_id)
-=======
 # API get all categories
 @app.get("/categories", response_model=ResponseAPI)
 def get_categories(db: Session = Depends(get_db)):
@@ -627,4 +653,3 @@ def get_categories(db: Session = Depends(get_db)):
 #     order_items = []
 #     for item_data in order.items:
 #         item = db.query(Item).filter(Item.item_id == item_data.item_id).first()
->>>>>>> 6951136e271300aea12c7ae16aecd43e83e7d593

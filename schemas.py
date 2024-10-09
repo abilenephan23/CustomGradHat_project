@@ -50,6 +50,20 @@ class SignUpReturn(BaseModel):
 class Token(BaseModel):
     token: str
 
+
+class ShopDetail(BaseModel):
+    shop_id: int
+    phone: str
+    shop_name: str
+    phone: str
+    address: str
+    description: str
+    status: str
+
+    class Config:
+        orm_mode = True
+
+
 class CategoryBase(BaseModel):
     category_id: int
     category_name: str
@@ -82,6 +96,7 @@ class ItemBase(BaseModel):
     quantity: int
     colors: List[ColorCreate]
     sizes: List[SizeCreate]
+    status: str
 
     class Config:
         orm_mode = True
@@ -92,6 +107,9 @@ class ItemDetail(ItemBase):
     category_name: str
     colors: List[ColorDTO]  # Use ColorDTO here
     sizes: List[SizeDTO]    # Use SizeDTO here
+    status: str
+    shop: ShopDetail
+    
 
 class RoleResponse(BaseModel):
     role_id: int
@@ -108,8 +126,10 @@ class UserResponse(BaseModel):
     firstname: str
     lastname: str
     phone: str
+    address: str
     role: RoleResponse  # Use the RoleResponse model
     status: str
+    shop: Optional[ShopDetail] = None  # Make the shop field optional
 
     class Config:
         orm_mode = True
@@ -123,13 +143,11 @@ class CustomizationCreate(BaseModel):
 
 class CustomizationResponse(BaseModel):
     customization_id: int
-<<<<<<< HEAD
     item_id: int
     price_adjustment: int
     image_url: str
     description: str
     is_shop_owner_created: str
-=======
 
     class Config:
         orm_mode = True
@@ -150,4 +168,3 @@ class OrderRespond(BaseModel):
     class Config:
         orm_mode = True
 
->>>>>>> 6951136e271300aea12c7ae16aecd43e83e7d593
