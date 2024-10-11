@@ -18,6 +18,5 @@ class User(Base):
     role_id = Column(Integer, ForeignKey("roles.role_id"))
     role = relationship("Role", back_populates="users")
     shops = relationship("Shop", back_populates="owner")
-
-
+    orders = relationship("Order", back_populates="user")
 
