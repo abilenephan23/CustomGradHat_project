@@ -5,9 +5,5 @@ sqlalchemy
 passlib
 pydantic[email]
 python-dotenv
-<<<<<<< HEAD
 PyJWT
-requests
-=======
-PyJWT
->>>>>>> main
+
