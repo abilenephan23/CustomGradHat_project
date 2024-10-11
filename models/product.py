@@ -43,6 +43,8 @@ class Item(Base):
 
     customizations = relationship("Customization", back_populates="item", cascade="all, delete-orphan")
 
+    details = relationship("OrderDetails", back_populates="item", cascade="all, delete-orphan")
+
 # Association table between items and colors
 class ItemColors(Base):
     __tablename__ = "item_colors"
@@ -85,3 +87,4 @@ class Customization(Base):
     is_shop_owner_created = Column(BIT(1))
 
     item = relationship("Item", back_populates="customizations", lazy='joined')
+    details = relationship("OrderDetails", back_populates="customization", cascade="all, delete-orphan")

@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 
 from datetime import datetime, timedelta,timezone
-from fastapi import FastAPI, Depends, HTTPException, status,Query
+from fastapi import FastAPI, Depends, HTTPException, status,Query,Request
 from typing import List
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -11,15 +11,21 @@ from database import engine, Base, get_db
 from models.user import User
 from models.shop import Shop
 from models.role import Role
+from models.order import Order, OrderDetails
 from models.product import *
 from schemas import *
 from fastapi.middleware.cors import CORSMiddleware
 from crud import *
+from payment import get_payment_url
+from starlette.responses import RedirectResponse
+
 
 load_dotenv()
 
 SECURITY_ALGORITHM = os.getenv('SECURITY_ALGORITHM')
 SECRET_KEY = os.getenv('SECRET_KEY')
+SUCCESS_ORDER_URL = os.getenv('SUCCESS_ORDER_URL')
+FAILURE_ORDER_URL = os.getenv('FAILURE_ORDER_URL')
 
 
 app = FastAPI()
@@ -241,7 +247,8 @@ def signin(signin_data: SignIn, db: Session = Depends(get_db)):
                                 "email": customer.email,
                                 "phone": customer.phone,
                                 "firstname": customer.firstname,
-                                "lastname": customer.lastname
+                                "lastname": customer.lastname,
+                                "address": customer.address
                             },
                             SECRET_KEY
                         )
@@ -653,3 +660,188 @@ def get_categories(db: Session = Depends(get_db)):
 #     order_items = []
 #     for item_data in order.items:
 #         item = db.query(Item).filter(Item.item_id == item_data.item_id).first()
+
+# API Get item by id
+@app.get("/items/{item_id}", response_model=ResponseAPI)
+def get_item_by_id(item_id: int, db: Session = Depends(get_db)):
+    item = db.query(Item).filter(Item.item_id == item_id).first()
+    if not item:
+        return ResponseAPI(
+            status=-1,
+            message="Không tìm thấy item",
+            data=None
+        )
+    return ResponseAPI(
+        status=1,
+        message="Lấy item thanh cong!",
+        data=ItemDetail(
+            item_id=item.item_id,
+            shop_id=item.shop_id,
+            name=item.name,
+            category_id=item.category_id,
+            category_name=item.category.category_name,
+            price=item.price,
+            description=item.description,
+            image_url=item.image_url,
+            quantity=item.quantity,
+            # Create a dictionary for each color using ColorCreate
+            colors=[ColorDTO(color_id=color.color_id, color_label=color.color_label) 
+                    for color in db.query(Color).join(ItemColors).filter(ItemColors.item_id == item.item_id).all()],
+            # Create a dictionary for each size using SizeCreate
+            sizes=[SizeDTO(size_id=size.size_id, size_label=size.size_label) 
+                   for size in db.query(Size).join(ItemSizes).filter(ItemSizes.item_id == item.item_id).all()],
+            status=item.status,
+            shop= ShopDetail(
+                shop_id=item.shop_id,
+                shop_name=item.shop.shop_name,
+                address=item.shop.address,
+                phone=item.shop.phone,
+                description=item.shop.description,
+                status=item.shop.status
+            )           
+        )
+    )
+
+# API create order
+@app.post("/orders/", response_model=ResponseAPI)
+def create_order(order: OrderCreate, request: Request, db: Session = Depends(get_db)):
+
+    try:
+        # Step 1: Begin the transaction
+        with db.begin():
+            # Step 2: Create the order with status and response as null
+            new_order = Order(
+                customer_id=order.customer_id,
+                total_price=order.total_price,
+                customer_address=order.customer_address,
+                customer_name=order.customer_name,
+                customer_phone=order.customer_phone,
+                image_url=order.image_url,
+                order_status=None,  # Null status initially
+                response=None,  # No response yet
+                payment_status=None,
+                shipping_status=None
+            )
+            db.add(new_order)
+            db.flush()  # Ensure the order_id is available for OrderDetails
+
+            # Step 3: Map the items, colors, sizes, customizations to order_details
+            if order.items:
+                for item in order.items:
+                    # Fetch the item from the database
+                    db_item = db.query(Item).filter(Item.item_id == item.item_id).first()
+                    if not db_item:
+                        db.rollback()
+                        return ResponseAPI(
+                            status=-1,
+                            message=f"Item with ID {item.item_id} not found",
+                            data=None
+                        )
+                    
+                    # Check if the item is available in sufficient quantity
+                    if db_item.quantity < item.item_quantity:
+                        db.rollback()
+                        return ResponseAPI(
+                            status=-1,
+                            message=f"Item with ID {item.item_id} is out of stock",
+                            data=None
+                        )
+                    
+                    # Deduct the quantity
+                    db_item.quantity -= item.item_quantity
+
+                    # Add to OrderDetails
+                    order_detail = OrderDetails(
+                        order_id=new_order.order_id,
+                        item_id=item.item_id,
+                        item_quantity=item.item_quantity,
+                        color_id=item.color_id,  # Assuming you may add logic to select color and size
+                        size_id=item.size_id
+                    )
+                    db.add(order_detail)
+
+            # Step 4: Handle customizations (if any)
+            if order.customizations:
+                for customization in order.customizations:
+                    db_customization = db.query(Customization).filter(
+                        Customization.customization_id == customization.customization_id).first()
+                    if not db_customization:
+                        db.rollback()
+                        return ResponseAPI(
+                            status=-1,
+                            message=f"Customization with ID {customization.customization_id} not found",
+                            data=None
+                        )
+                    
+                    # Create order details with customizations
+                    order_detail = OrderDetails(
+                        order_id=new_order.order_id,
+                        customization_id=customization.customization_id,
+                        item_id=None  # No item in this case
+                    )
+                    db.add(order_detail)
+
+            # Step 5: Commit the transaction
+            db.commit()
+
+        # Step 6: Create a payment link for VNpay and return the response
+        return ResponseAPI(
+            status=1,
+            message="Order created successfully",
+            data=OrderCreateResponse(
+                url=get_payment_url(new_order.total_price, new_order.order_id, request.client.host)
+            )
+        )
+
+    except HTTPException as e:
+        # Rollback the transaction in case of HTTP exceptions
+        db.rollback()
+        return ResponseAPI(status=-1, message=str(e.detail), data=None)
+
+    except Exception as e:
+        # Rollback the transaction in case of any other exceptions
+        db.rollback()
+        return ResponseAPI(status=-1, message="Failed to create order: " + str(e) + "", data=None)
+
+
+# API order callback
+@app.get("/orders/callback")
+def order_callback(vnp_Data:str = None,vnp_ResponseCode:str = None,db: Session = Depends(get_db)):
+    if vnp_ResponseCode == "00":
+        # update order status base on vnp_Data which is the order id
+        order = db.query(Order).filter(Order.order_id == vnp_Data).first()
+        if not order:
+            return ResponseAPI(
+            status=-1,
+            message="Đơn hàng không tồn tại trong hệ thống",
+            data=None
+        )
+        order.payment_status = '1'
+        db.commit()
+        db.refresh(order)
+        return RedirectResponse(url=SUCCESS_ORDER_URL)
+    else:
+        # update order status base on vnp_Data which is the order id
+        order = db.query(Order).filter(Order.order_id == vnp_Data).first()
+        if not order:
+            return ResponseAPI(
+            status=-1,
+            message="Đơn hàng không tồn tại trong hệ thống",
+            data=None
+        )
+        order.order_status = '0'
+        order.response = "Đơn hàng đã bị hủy"
+        order.payment_status = '0'
+        order.shipping_status = '0'
+        # return the quantity back to the item
+        db_item = db.query(Item).filter(Item.item_id == order.item_id).first()
+        if not db_item:
+            return ResponseAPI(
+            status=-1,
+            message="Sản phẩm không tồn tại trong hệ thống",
+            data=None
+        )
+        db_item.quantity += order.item_quantity
+        db.commit()
+        db.refresh(order)
+        return RedirectResponse(url=FAILURE_ORDER_URL)

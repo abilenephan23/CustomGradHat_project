@@ -168,3 +168,28 @@ class OrderRespond(BaseModel):
     class Config:
         orm_mode = True
 
+class ItemOrderCreate(BaseModel):
+    item_id: int
+    item_quantity: int
+    color_id: int
+    size_id:int
+
+class CustomizationCreate(BaseModel):
+    customization_id: int
+
+class PaymentOrderCreate(BaseModel):
+    payment_id: int
+    payment_status: int
+
+class OrderCreate(BaseModel):
+    customer_id: int
+    total_price: int
+    customer_address: str
+    customer_name: str
+    customer_phone: str
+    items: Optional[List[ItemOrderCreate]] = None
+    image_url: str 
+    customizations: Optional[List[CustomizationCreate]] = None  # Make the customizations field optional 
+
+class OrderCreateResponse(BaseModel):
+    url: str
