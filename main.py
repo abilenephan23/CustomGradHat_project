@@ -223,6 +223,7 @@ def signin(signin_data: SignIn, db: Session = Depends(get_db)):
                     data=Token(
                         token=generate_jwt_token(
                             {
+                                "user_id": customer.user_id,
                                 "role_id": customer.role_id,
                                 "username": customer.username,
                                 "email": customer.email,
@@ -242,6 +243,7 @@ def signin(signin_data: SignIn, db: Session = Depends(get_db)):
                     data=Token(
                         token=generate_jwt_token(
                             {
+                                "user_id": customer.user_id,
                                 "role_id": customer.role_id,
                                 "username": customer.username,
                                 "email": customer.email,
