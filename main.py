@@ -655,14 +655,6 @@ def get_categories(db: Session = Depends(get_db)):
         data=categories_response
     )
 
-# api tạo đơn hàng
-# @app.post("/orders/", response_model=ResponseAPI)
-# def create_order(order: OrderCreate, db: Session = Depends(get_db)):
-#     total_price = 0
-#     order_items = []
-#     for item_data in order.items:
-#         item = db.query(Item).filter(Item.item_id == item_data.item_id).first()
-
 # API Get item by id
 @app.get("/items/{item_id}", response_model=ResponseAPI)
 def get_item_by_id(item_id: int, db: Session = Depends(get_db)):
@@ -847,3 +839,81 @@ def order_callback(vnp_Data:str = None,vnp_ResponseCode:str = None,db: Session =
         db.commit()
         db.refresh(order)
         return RedirectResponse(url=FAILURE_ORDER_URL)
+
+@app.get("/items/", response_model=ResponseAPI)
+def get_all_item_by_name(
+    item_name: str,
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),  # Start page from 1 (1-based index)
+    limit: int = Query(10, ge=1),  # Limit for pagination
+):
+    item_name_default = item_name.lower()
+    item = db.query(Item).filter(
+        Item.name.ilike(f"%{item_name_default}%")
+    ).first()
+    if not item:
+        return ResponseAPI(
+            status=-1,
+            message="Không tìm thấy sản phẩm",
+            data=None
+        )
+    
+    skip = (page - 1) * limit
+
+    # Query to get total number of items
+    items = db.query(Item).filter(
+        Item.name.ilike(f"%{item_name_default}%")
+    ).offers(skip).limit(limit).all()
+    total_items = db.query(Item).filter(
+        Item.name.ilike(f"%{item_name_default}%")
+    ).count()
+    
+
+    total_pages = (total_items + limit - 1) // limit  # Round up
+    next_page = page + 1 if page < total_pages else None
+    prev_page = page - 1 if page > 1 else None
+
+    items_response = [
+        ItemDetail(
+            item_id=item.item_id,
+            shop_id=item.shop_id,
+            name=item.name,
+            category_id=item.category_id,
+            category_name=item.category.category_name,
+            price=item.price,
+            description=item.description,
+            image_url=item.image_url,
+            quantity=item.quantity,
+            # Create a dictionary for each color using ColorCreate
+            colors=[ColorDTO(color_id=color.color_id, color_label=color.color_label) 
+                    for color in db.query(Color).join(ItemColors).filter(ItemColors.item_id == item.item_id).all()],
+            # Create a dictionary for each size using SizeCreate
+            sizes=[SizeDTO(size_id=size.size_id, size_label=size.size_label) 
+                   for size in db.query(Size).join(ItemSizes).filter(ItemSizes.item_id == item.item_id).all()],
+            status=item.status,
+            shop= ShopDetail(
+                shop_id=item.shop_id,
+                shop_name=item.shop.shop_name,
+                address=item.shop.address,
+                phone=item.shop.phone,
+                description=item.shop.description,
+                status=item.shop.status
+            )           
+        )
+        for item in items
+    ]
+
+    return ResponseAPI(
+        status=1,
+        message="Lấy danh sách sản phẩm thành công!",
+        data={
+            "items": items_response,
+            "pagination": {
+                "total_records": total_items,
+                "total_pages": total_pages,
+                "current_page": page,
+                "next_page": next_page,
+                "prev_page": prev_page
+            }
+        }
+    )
