@@ -767,20 +767,19 @@ def create_order(order: OrderCreate, request: Request, db: Session = Depends(get
             # Step 4: Handle customizations (if any)
             if order.customizations:
                 for customization in order.customizations:
-                    db_customization = db.query(Customization).filter(
-                        Customization.customization_id == customization.customization_id).first()
-                    if not db_customization:
-                        db.rollback()
-                        return ResponseAPI(
-                            status=-1,
-                            message=f"Customization with ID {customization.customization_id} not found",
-                            data=None
-                        )
-                    
+                    #  create customizations first
+                    new_customization = Customization(
+                        price_adjustment = customization.price_adjustment,
+                        image_url = customization.image_url,
+                        description = customization.description,
+                        is_shop_owner_created = '0'
+                    )
+                    db.add(new_customization)
+                    db.flush()  # Ensure the customization_id is available for OrderDetails
                     # Create order details with customizations
                     order_detail = OrderDetails(
                         order_id=new_order.order_id,
-                        customization_id=customization.customization_id,
+                        customization_id=new_customization.customization_id,
                         item_id=None  # No item in this case
                     )
                     db.add(order_detail)
