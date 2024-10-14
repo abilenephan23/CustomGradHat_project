@@ -6,4 +6,5 @@ passlib
 pydantic[email]
 python-dotenv
 PyJWT
+payos
 

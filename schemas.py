@@ -170,6 +170,8 @@ class OrderRespond(BaseModel):
 
 class ItemOrderCreate(BaseModel):
     item_id: int
+    item_name : str
+    item_price: int
     item_quantity: int
     color_id: int
     size_id:int
