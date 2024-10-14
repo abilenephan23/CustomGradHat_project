@@ -177,7 +177,9 @@ class ItemOrderCreate(BaseModel):
     size_id:int
 
 class CustomizationCreate(BaseModel):
-    customization_id: int
+    price_adjustment: int
+    image_url: str
+    description: str
 
 class PaymentOrderCreate(BaseModel):
     payment_id: int
