@@ -949,7 +949,7 @@ def get_all_item_by_name(
         }
     )
 
-@app.get("orders/callback-payos")
+@app.get("/orders/callback-payos")
 def order_callback_payos(orderCode:str = None,code:str = None,id:str = None,cancel: str = None,status: str = None,db: Session = Depends(get_db)):
    if code == "00":
         if status == "PAID":
