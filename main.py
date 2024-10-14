@@ -981,7 +981,7 @@ def order_callback_payos(orderCode:str = None,code:str = None,id:str = None,canc
             # return the quantity back to the item
             for item in order.details:
                 db_item = db.query(Item).filter(Item.item_id == item.item_id).first()
-                db_item.quantity += item.item.quantity
+                db_item.quantity += item.item_quantity
 
             
             db.commit()
