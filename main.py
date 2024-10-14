@@ -1,5 +1,6 @@
 import jwt
 import os
+import time
 from dotenv import load_dotenv
 
 from datetime import datetime, timedelta,timezone
@@ -18,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from crud import *
 from payment import get_payment_url
 from starlette.responses import RedirectResponse
+from payos import PayOS, ItemData, PaymentData
 
 
 load_dotenv()
@@ -26,6 +28,14 @@ SECURITY_ALGORITHM = os.getenv('SECURITY_ALGORITHM')
 SECRET_KEY = os.getenv('SECRET_KEY')
 SUCCESS_ORDER_URL = os.getenv('SUCCESS_ORDER_URL')
 FAILURE_ORDER_URL = os.getenv('FAILURE_ORDER_URL')
+
+PAYOS_CLIENT_ID = os.getenv('PAYOS_CLIENT_ID')
+PAYOS_API_KEY = os.getenv('PAYOS_API_KEY')
+PAYOS_CHECKSUM_KEY = os.getenv('PAYOS_CHECKSUM_KEY')
+RETURN_URL=os.getenv('RETURN_URL')
+
+payos = PayOS(PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY)
+
 
 
 app = FastAPI()
@@ -778,12 +788,32 @@ def create_order(order: OrderCreate, request: Request, db: Session = Depends(get
             # Step 5: Commit the transaction
             db.commit()
 
+
+        itemsPayos = []
+        # create payment data url with pay os
+        for item in order.items:
+            item = ItemData(name=item.item_name, price=item.item_price, quantity=item.item_quantity)
+            itemsPayos.append(item)
+        
+        paymentData = PaymentData(
+            orderCode=str(new_order.order_id),
+            amount=new_order.total_price,
+            description='Thanh toan don hang tai Spotlight. So tien ' + str(int(new_order.total_price))+' VND',
+            items=itemsPayos,
+            cancelUrl=RET,
+            successUrl=request.client.host + "/orders/callback"
+        )
+
+        payment_link_response = payos.createPaymentLink(paymentData)
+
+
+
         # Step 6: Create a payment link for VNpay and return the response
         return ResponseAPI(
             status=1,
             message="Order created successfully",
             data=OrderCreateResponse(
-                url=get_payment_url(new_order.total_price, new_order.order_id, request.client.host)
+                url=payment_link_response.checkoutUrl
             )
         )
 
@@ -917,3 +947,50 @@ def get_all_item_by_name(
             }
         }
     )
+
+@app.get("orders/callback-payos")
+def order_callback_payos(orderCode:str = None,code:str = None,id:str = None,cancel: str = None,status: str = None,db: Session = Depends(get_db)):
+   if code == "00":
+        if status == "PAID":
+            # update order status base on vnp_Data which is the order id
+            order = db.query(Order).filter(Order.order_id == orderCode).first()
+            if not order:
+                return ResponseAPI(
+                status=-1,
+                message="Đơn hàng không tồn tại trong hệ thống",
+                data=None
+            )
+            order.payment_status = '1'
+            db.commit()
+            db.refresh(order)
+            return RedirectResponse(url=SUCCESS_ORDER_URL)
+        elif status == "CANCELLED":
+             # update order status base on vnp_Data which is the order id
+            order = db.query(Order).filter(Order.order_id == orderCode).first()
+            if not order:
+                return ResponseAPI(
+                status=-1,
+                message="Đơn hàng không tồn tại trong hệ thống",
+                data=None
+            )
+            order.order_status = '0'
+            order.response = "Đơn hàng đã bị hủy"
+            order.payment_status = '0'
+            order.shipping_status = '0'
+            # return the quantity back to the item
+            db_item = db.query(Item).filter(Item.item_id == order.item_id).first()
+            if not db_item:
+                return ResponseAPI(
+                status=-1,
+                message="Sản phẩm không tồn tại trong hệ thống",
+                data=None
+            )
+            db_item.quantity += order.item_quantity
+            db.commit()
+            db.refresh(order)
+            return RedirectResponse(url=FAILURE_ORDER_URL)
+   else:
+    return RedirectResponse(url=FAILURE_ORDER_URL)
+
+       
+       
