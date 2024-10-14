@@ -796,12 +796,12 @@ def create_order(order: OrderCreate, request: Request, db: Session = Depends(get
             itemsPayos.append(item)
         
         paymentData = PaymentData(
-            orderCode=str(new_order.order_id),
-            amount=new_order.total_price,
-            description='Thanh toan don hang tai Spotlight. So tien ' + str(int(new_order.total_price))+' VND',
+            orderCode=new_order.order_id,
+            amount=int(new_order.total_price),
+            description='Thanh toan tai Spotlight',
             items=itemsPayos,
             cancelUrl=RETURN_URL,
-            successUrl=RETURN_URL
+            returnUrl=RETURN_URL
         )
 
         payment_link_response = payos.createPaymentLink(paymentData)
