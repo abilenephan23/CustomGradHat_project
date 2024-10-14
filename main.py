@@ -800,8 +800,8 @@ def create_order(order: OrderCreate, request: Request, db: Session = Depends(get
             amount=new_order.total_price,
             description='Thanh toan don hang tai Spotlight. So tien ' + str(int(new_order.total_price))+' VND',
             items=itemsPayos,
-            cancelUrl=RET,
-            successUrl=request.client.host + "/orders/callback"
+            cancelUrl=RETURN_URL,
+            successUrl=RETURN_URL
         )
 
         payment_link_response = payos.createPaymentLink(paymentData)
