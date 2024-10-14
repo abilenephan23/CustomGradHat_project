@@ -979,14 +979,10 @@ def order_callback_payos(orderCode:str = None,code:str = None,id:str = None,canc
             order.payment_status = '0'
             order.shipping_status = '0'
             # return the quantity back to the item
-            db_item = db.query(Item).filter(Item.item_id == order.item_id).first()
-            if not db_item:
-                return ResponseAPI(
-                status=-1,
-                message="Sản phẩm không tồn tại trong hệ thống",
-                data=None
-            )
-            db_item.quantity += order.item_quantity
+            for item in order.details:
+                db_item = db.query(Item).filter(Item.item_id == item.item_id).first()
+                db_item.quantity += item.quantity
+            
             db.commit()
             db.refresh(order)
             return RedirectResponse(url=FAILURE_ORDER_URL)
