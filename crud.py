@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
-from models.product import Customization
+from models.product import Customization, Item
+from models.order import *
 from schemas import CustomizationCreate
 
 
@@ -35,3 +36,6 @@ def delete_customizations(db: Session, customization_id: int):
        db.commit()
        return db_customization
     return None
+
+def get_orders_by_shop(db: Session, shop_id: int):
+    return db.query(OrderDetails).join(Item, Item.item_id == OrderDetails.item_id).filter(Item.shop_id == shop_id).all()

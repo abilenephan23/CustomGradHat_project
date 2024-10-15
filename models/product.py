@@ -38,8 +38,8 @@ class Item(Base):
     item_sizes = relationship("ItemSizes", back_populates="item" , cascade="all, delete-orphan")
     
     # Colors and sizes through association tables
-    colors = relationship("Color", secondary="item_colors")
-    sizes = relationship("Size", secondary="item_sizes")
+    colors = relationship("Color", secondary="item_colors", overlaps="item_colors")
+    sizes = relationship("Size", secondary="item_sizes", overlaps="item_sizes")
 
     customizations = relationship("Customization", back_populates="item", cascade="all, delete-orphan")
 
@@ -53,7 +53,7 @@ class ItemColors(Base):
     color_id = Column(Integer, ForeignKey("colors.color_id"), primary_key=True)
 
     # Back reference to the item
-    item = relationship("Item", back_populates="item_colors")
+    item = relationship("Item", back_populates="item_colors", overlaps="colors")
 
 # Association table between items and sizes
 class ItemSizes(Base):
@@ -63,7 +63,7 @@ class ItemSizes(Base):
     size_id = Column(Integer, ForeignKey("sizes.size_id"), primary_key=True)
 
     # Back reference to the item
-    item = relationship("Item", back_populates="item_sizes")
+    item = relationship("Item", back_populates="item_sizes", overlaps="sizes")
 
 class Color(Base):
     __tablename__ = "colors"
