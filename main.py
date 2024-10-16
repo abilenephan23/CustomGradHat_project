@@ -1007,7 +1007,14 @@ def get_users_order(
     limit: int = Query(10, ge=1),
 ):
     skip = (page - 1) * limit
-
+    total_orders = (
+        db.query(Order)
+        .join(OrderDetails, Order.order_id == OrderDetails.order_id)
+        .join(Item, OrderDetails.item_id == Item.item_id)
+        .filter(Item.shop_id == shop_id)
+        .count()
+    )
+    total_pages = (total_orders + limit - 1) // limit  # Round up
     orders = get_orders_by_shop(db, shop_id,skip, limit)
     if not orders:
         return ResponseAPI(
@@ -1015,6 +1022,7 @@ def get_users_order(
             message="Không tìm thấy đơn hàng",
             data=None
         )
+    
     order_response = [
         {
             "order_id": order.order_id,
@@ -1080,11 +1088,22 @@ def get_users_order(
         }
         for order in orders
     ]
-
+    # Tính trang trước và trang kế
+    prev_page = page - 1 if page > 1 else None
+    next_page = page + 1 if page < total_pages else None
     return ResponseAPI(
         status=1,
         message="Lấy đơn hàng thành công",
-        data=order_response
+        data={
+            "orders": order_response,
+            "pagination": {
+                "total_records": total_orders,
+                "total_pages": total_pages,
+                "current_page": page,
+                "next_page": next_page,
+                "prev_page": prev_page
+            }
+        }
     )
        
 @app.get("/user/orders/{user_id}", response_model=ResponseAPI)
@@ -1095,10 +1114,13 @@ def get_user_orders(
     limit: int = Query(10, ge=1),
 ):
     skip = (page - 1) * limit
-
+    # Lấy tổng số đơn hàng của người dùng
+    total_orders = db.query(Order).filter(Order.customer_id == user_id).count()
+     # Tính tổng số trang
+    total_pages = (total_orders + limit - 1) // limit  # Làm tròn lên
     # Lấy danh sách đơn hàng của người dùng
     orders = get_orders_by_user(db, user_id, skip, limit)
-
+    
     if not orders:
         return ResponseAPI(
             status=-1,
@@ -1111,11 +1133,7 @@ def get_user_orders(
         {
             "order_id": order.order_id,
             "total_price": float(order.total_price),
-            "order_at": (
-                order.order_at.isoformat() 
-                if isinstance(order.order_at, datetime) 
-                else None
-            ),
+            "order_at": order.order_at,
             "order_status": order.order_status,
             "response": order.response,
             "shipping_status": order.shipping_status,
@@ -1139,13 +1157,38 @@ def get_user_orders(
                 }
                 for details in order.details
                 for item in db.query(Item).filter(Item.item_id == details.item_id).all()
+            ],
+            "customizations": [
+                {
+                    "customization_id": customization.customization_id,
+                    "item_id": customization.item_id,
+                    "price_adjustment": customization.price_adjustment,
+                    "description": customization.description,
+                    "image_url": customization.image_url,
+                    "is_shop_owner_created": customization.is_shop_owner_created
+                }
+                for details in order.details
+                for customization in db.query(Customization)
+                    .filter(Customization.customization_id == details.customization_id).all()
             ]
         }
         for order in orders
     ]
+    # Tính trang trước và trang kế
+    prev_page = page - 1 if page > 1 else None
+    next_page = page + 1 if page < total_pages else None
 
     return ResponseAPI(
         status=1,
         message="Lấy đơn hàng thành công",
-        data=order_response
+        data={
+            "orders": order_response,
+            "pagination": {
+                "total_records": total_orders,
+                "total_pages": total_pages,
+                "current_page": page,
+                "next_page": next_page,
+                "prev_page": prev_page
+            }
+        }
     )
