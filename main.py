@@ -1027,7 +1027,7 @@ def get_users_order(
         {
             "order_id": order.order_id,
             "customer_id": order.customer_id,
-            "total_price": order.total_price,
+            "total_price": float(order.total_price),
             "order_at": order.order_at,
             "order_status": order.order_status,
             "response": order.response,
@@ -1045,7 +1045,7 @@ def get_users_order(
                         "category_id": item.category.category_id,
                         "category_name": item.category.category_name
                     },
-                    "price": item.price,
+                    "price": float(item.price),
                     "description": item.description,
                     "image_url": item.image_url,
                     "status": item.status,
@@ -1136,12 +1136,17 @@ def get_user_orders(
             "order_at": order.order_at,
             "order_status": order.order_status,
             "response": order.response,
+            "customer_address": order.customer_address,
+            "customer_name": order.customer_name,
+            "customer_phone": order.customer_phone,
+            "image_url": order.image_url,
             "shipping_status": order.shipping_status,
+            "payment_status": order.payment_status,
             "items": [
                 {
                     "item_id": item.item_id,
                     "name": item.name,
-                    "price": item.price,
+                    "price": float(item.price),
                     "quantity": details.item_quantity,
                     "image_url": item.image_url,
                     "category": {
@@ -1153,10 +1158,20 @@ def get_user_orders(
                         "shop_name": item.shop.shop_name,
                         "address": item.shop.address,
                         "phone": item.shop.phone
-                    }
+                    },
+                    "color": {
+                        "color_id": color.color_id,
+                        "color_label": color.color_label
+                    },
+                    "size": {
+                        "size_id": size.size_id,
+                        "size_label": size.size_label
+                    },
                 }
                 for details in order.details
                 for item in db.query(Item).filter(Item.item_id == details.item_id).all()
+                for color in db.query(Color).join(ItemColors).filter(ItemColors.item_id == item.item_id).all()
+                for size in db.query(Size).join(ItemSizes).filter(ItemSizes.item_id == item.item_id).all()
             ],
             "customizations": [
                 {
