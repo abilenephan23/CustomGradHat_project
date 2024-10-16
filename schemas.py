@@ -110,6 +110,9 @@ class ItemDetail(ItemBase):
     status: str
     shop: ShopDetail
     
+    class Config:
+        orm_mode = True
+    
 
 class RoleResponse(BaseModel):
     role_id: int

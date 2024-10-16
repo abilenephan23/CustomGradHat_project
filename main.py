@@ -793,7 +793,11 @@ def create_order(order: OrderCreate, request: Request, db: Session = Depends(get
         for item in order.items:
             item = ItemData(name=item.item_name, price=item.item_price, quantity=item.item_quantity)
             itemsPayos.append(item)
-        
+            
+        for customize in order.customizations:
+            custom = ItemData(name=customize.description,price=customize.price_adjustment,quantity=1)
+            itemsPayos.append(custom)
+
         paymentData = PaymentData(
             orderCode=new_order.order_id,
             amount=int(new_order.total_price),
@@ -870,7 +874,8 @@ def order_callback(vnp_Data:str = None,vnp_ResponseCode:str = None,db: Session =
         db.refresh(order)
         return RedirectResponse(url=FAILURE_ORDER_URL)
 
-@app.get("/items/", response_model=ResponseAPI)
+# cần optimize lại kết quả trả về
+@app.get("/items/name/{item_name}")
 def get_all_item_by_name(
     item_name: str,
     db: Session = Depends(get_db),
@@ -878,27 +883,24 @@ def get_all_item_by_name(
     limit: int = Query(10, ge=1),  # Limit for pagination
 ):
     item_name_default = item_name.lower()
-    item = db.query(Item).filter(
+    try:
+        skip = (page - 1) * limit
+        items = db.query(Item).filter(
         Item.name.ilike(f"%{item_name_default}%")
-    ).first()
-    if not item:
-        return ResponseAPI(
+            ).offset(skip).limit(limit).all()
+        
+    except Exception as e:
+        raise ResponseAPI(
             status=-1,
             message="Không tìm thấy sản phẩm",
             data=None
         )
-    
-    skip = (page - 1) * limit
 
-    # Query to get total number of items
-    items = db.query(Item).filter(
-        Item.name.ilike(f"%{item_name_default}%")
-    ).offers(skip).limit(limit).all()
+
     total_items = db.query(Item).filter(
         Item.name.ilike(f"%{item_name_default}%")
     ).count()
     
-
     total_pages = (total_items + limit - 1) // limit  # Round up
     next_page = page + 1 if page < total_pages else None
     prev_page = page - 1 if page > 1 else None
@@ -919,7 +921,7 @@ def get_all_item_by_name(
                     for color in db.query(Color).join(ItemColors).filter(ItemColors.item_id == item.item_id).all()],
             # Create a dictionary for each size using SizeCreate
             sizes=[SizeDTO(size_id=size.size_id, size_label=size.size_label) 
-                   for size in db.query(Size).join(ItemSizes).filter(ItemSizes.item_id == item.item_id).all()],
+                for size in db.query(Size).join(ItemSizes).filter(ItemSizes.item_id == item.item_id).all()],
             status=item.status,
             shop= ShopDetail(
                 shop_id=item.shop_id,
@@ -931,7 +933,8 @@ def get_all_item_by_name(
             )           
         )
         for item in items
-    ]
+]
+    
 
     return ResponseAPI(
         status=1,
@@ -947,6 +950,10 @@ def get_all_item_by_name(
             }
         }
     )
+    
+   
+
+    
 
 @app.get("/orders/callback-payos")
 def order_callback_payos(orderCode:str = None,code:str = None,id:str = None,cancel: str = None,status: str = None,db: Session = Depends(get_db)):
@@ -977,10 +984,16 @@ def order_callback_payos(orderCode:str = None,code:str = None,id:str = None,canc
             order.response = "Đơn hàng đã bị hủy"
             order.payment_status = '0'
             order.shipping_status = '0'
-            # return the quantity back to the item
+            # Return the quantity back to the item
             for item in order.details:
                 db_item = db.query(Item).filter(Item.item_id == item.item_id).first()
-                db_item.quantity += item.item_quantity
+                if db_item:  # Check if db_item exists
+                    db_item.quantity += item.item_quantity
+                else:
+                    # Handle case if the item does not exist
+                    # Optionally log this for debugging
+                    print(f"Item with ID {item.item_id} not found when trying to restock.")
+
 
             
             db.commit()
@@ -989,5 +1002,31 @@ def order_callback_payos(orderCode:str = None,code:str = None,id:str = None,canc
    else:
     return RedirectResponse(url=FAILURE_ORDER_URL)
 
-       
+@app.get("/orders/{shop_id}", response_model=ResponseAPI)
+def get_users_order(
+    shop_id: int, 
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),  # Start page from 1 (1-based index)
+    limit: int = Query(10, ge=1),):       
+    orders = get_orders_by_shop(db, shop_id)
+    if not orders:
+        return ResponseAPI(
+            status=-1,
+            message="Không tìm thấy đơn hàng",
+            data=None
+        )
+    order_response = [
+        OrderRespond(
+            order_id=orders.order_id,
+            customer_id = orders.customer_id,
+            quantity = orders.quantity,
+            total_price = orders.total_price,
+            order_at = orders.order_at,
+            order_status = orders.order_status,
+            payment_id = orders.payment_id,
+            response = orders.response,
+            img_url = orders.image_url,
+            variation_id = orders.variation_id,
+            customization_id = orders.customization_id
+        )]
        
