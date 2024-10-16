@@ -158,7 +158,6 @@ class CustomizationResponse(BaseModel):
 class OrderRespond(BaseModel):
     order_id: int
     customer_id: int
-    quantity: int
     total_price: int
     order_at: str
     order_status: int

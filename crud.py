@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from models.product import Customization, Item
 from models.order import *
 from schemas import CustomizationCreate
@@ -37,5 +37,24 @@ def delete_customizations(db: Session, customization_id: int):
        return db_customization
     return None
 
-def get_orders_by_shop(db: Session, shop_id: int):
-    return db.query(OrderDetails).join(Item, Item.item_id == OrderDetails.item_id).filter(Item.shop_id == shop_id).all()
+def get_orders_by_shop(db: Session, shop_id: int, skip: int, limit: int):
+    return (db.query(Order)
+        .join(OrderDetails, Order.order_id == OrderDetails.order_id)
+        .join( Item,  OrderDetails.item_id ==  Item.item_id)
+        .filter( Item.shop_id == shop_id)
+        .options(joinedload( Order.details))  # Load chi tiết đơn hàng
+        .offset(skip)
+        .limit(limit)
+        .all())
+
+def get_orders_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 10):
+    return (
+        db.query(Order)
+        .filter(Order.customer_id == user_id)
+        .options(joinedload(Order.details))
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+        
