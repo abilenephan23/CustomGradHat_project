@@ -1087,3 +1087,65 @@ def get_users_order(
         data=order_response
     )
        
+@app.get("/user/orders/{user_id}", response_model=ResponseAPI)
+def get_user_orders(
+    user_id: int, 
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1),
+):
+    skip = (page - 1) * limit
+
+    # Lấy danh sách đơn hàng của người dùng
+    orders = get_orders_by_user(db, user_id, skip, limit)
+
+    if not orders:
+        return ResponseAPI(
+            status=-1,
+            message="Không tìm thấy đơn hàng của người dùng",
+            data=None
+        )
+
+    # Chuẩn bị phản hồi
+    order_response = [
+        {
+            "order_id": order.order_id,
+            "total_price": float(order.total_price),
+            "order_at": (
+                order.order_at.isoformat() 
+                if isinstance(order.order_at, datetime) 
+                else None
+            ),
+            "order_status": order.order_status,
+            "response": order.response,
+            "shipping_status": order.shipping_status,
+            "items": [
+                {
+                    "item_id": item.item_id,
+                    "name": item.name,
+                    "price": item.price,
+                    "quantity": details.item_quantity,
+                    "image_url": item.image_url,
+                    "category": {
+                        "category_id": item.category.category_id,
+                        "category_name": item.category.category_name
+                    },
+                    "shop": {
+                        "shop_id": item.shop.shop_id,
+                        "shop_name": item.shop.shop_name,
+                        "address": item.shop.address,
+                        "phone": item.shop.phone
+                    }
+                }
+                for details in order.details
+                for item in db.query(Item).filter(Item.item_id == details.item_id).all()
+            ]
+        }
+        for order in orders
+    ]
+
+    return ResponseAPI(
+        status=1,
+        message="Lấy đơn hàng thành công",
+        data=order_response
+    )

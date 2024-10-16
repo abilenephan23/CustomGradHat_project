@@ -47,4 +47,14 @@ def get_orders_by_shop(db: Session, shop_id: int, skip: int, limit: int):
         .limit(limit)
         .all())
 
+def get_orders_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 10):
+    return (
+        db.query(Order)
+        .filter(Order.customer_id == user_id)
+        .options(joinedload(Order.details))
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
         
