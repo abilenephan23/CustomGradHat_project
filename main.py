@@ -793,7 +793,11 @@ def create_order(order: OrderCreate, request: Request, db: Session = Depends(get
         for item in order.items:
             item = ItemData(name=item.item_name, price=item.item_price, quantity=item.item_quantity)
             itemsPayos.append(item)
-        
+            
+        for customize in order.customizations:
+            custom = ItemData(name=customize.description,price=customize.price_adjustment,quantity=1)
+            itemsPayos.append(custom)
+
         paymentData = PaymentData(
             orderCode=new_order.order_id,
             amount=int(new_order.total_price),
