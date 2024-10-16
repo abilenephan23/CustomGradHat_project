@@ -984,10 +984,15 @@ def order_callback_payos(orderCode:str = None,code:str = None,id:str = None,canc
             order.response = "Đơn hàng đã bị hủy"
             order.payment_status = '0'
             order.shipping_status = '0'
-            # return the quantity back to the item
+            # Return the quantity back to the item
             for item in order.details:
                 db_item = db.query(Item).filter(Item.item_id == item.item_id).first()
-                db_item.quantity += item.item_quantity
+                if db_item:  # Check if db_item exists
+                    db_item.quantity += item.item_quantity
+                else:
+                    # Handle case if the item does not exist
+                    # Optionally log this for debugging
+                    print(f"Item with ID {item.item_id} not found when trying to restock.")
 
             
             db.commit()
