@@ -947,9 +947,6 @@ def get_all_item_by_name(
         }
     )
     
-   
-
-    
 
 @app.get("/orders/callback-payos")
 def order_callback_payos(orderCode:str = None,code:str = None,id:str = None,cancel: str = None,status: str = None,db: Session = Depends(get_db)):
@@ -997,8 +994,11 @@ def get_users_order(
     shop_id: int, 
     db: Session = Depends(get_db),
     page: int = Query(1, ge=1),  # Start page from 1 (1-based index)
-    limit: int = Query(10, ge=1),):       
-    orders = get_orders_by_shop(db, shop_id)
+    limit: int = Query(10, ge=1),
+):
+    skip = (page - 1) * limit
+
+    orders = get_orders_by_shop(db, shop_id,skip, limit)
     if not orders:
         return ResponseAPI(
             status=-1,
@@ -1006,17 +1006,74 @@ def get_users_order(
             data=None
         )
     order_response = [
-        OrderRespond(
-            order_id=orders.order_id,
-            customer_id = orders.customer_id,
-            quantity = orders.quantity,
-            total_price = orders.total_price,
-            order_at = orders.order_at,
-            order_status = orders.order_status,
-            payment_id = orders.payment_id,
-            response = orders.response,
-            img_url = orders.image_url,
-            variation_id = orders.variation_id,
-            customization_id = orders.customization_id
-        )]
+        {
+            "order_id": order.order_id,
+            "customer_id": order.customer_id,
+            "total_price": order.total_price,
+            "order_at": order.order_at,
+            "order_status": order.order_status,
+            "response": order.response,
+            "customer_address": order.customer_address,
+            "customer_name": order.customer_name,
+            "customer_phone": order.customer_phone,
+            "image_url": order.image_url,
+            "payment_status": order.payment_status,
+            "shipping_status": order.shipping_status,
+            "items": [
+                {
+                    "item_id": item.item_id,
+                    "name": item.name,
+                    "category": {
+                        "category_id": item.category.category_id,
+                        "category_name": item.category.category_name
+                    },
+                    "price": item.price,
+                    "description": item.description,
+                    "image_url": item.image_url,
+                    "status": item.status,
+                    "item_quantity": details.item_quantity,
+                    "color": {
+                        "color_id": color.color_id,
+                        "color_label": color.color_label
+                    },
+                    "size": {
+                        "size_id": size.size_id,
+                        "size_label": size.size_label
+                    },
+                    "shop": {
+                        "shop_id": item.shop.shop_id,
+                        "shop_name": item.shop.shop_name,
+                        "address": item.shop.address,
+                        "phone": item.shop.phone,
+                        "description": item.shop.description,
+                        "status": item.shop.status
+                    }
+                }
+                for details in order.details
+                for item in db.query(Item).filter(Item.item_id == details.item_id).all()
+                for color in db.query(Color).join(ItemColors).filter(ItemColors.item_id == item.item_id).all()
+                for size in db.query(Size).join(ItemSizes).filter(ItemSizes.item_id == item.item_id).all()
+            ],
+            "customizations": [
+                {
+                    "customization_id": customization.customization_id,
+                    "item_id": customization.item_id,
+                    "price_adjustment": customization.price_adjustment,
+                    "description": customization.description,
+                    "image_url": customization.image_url,
+                    "is_shop_owner_created": customization.is_shop_owner_created
+                }
+                for details in order.details
+                for customization in db.query(Customization)
+                    .filter(Customization.customization_id == details.customization_id).all()
+            ]
+        }
+        for order in orders
+    ]
+
+    return ResponseAPI(
+        status=1,
+        message="Lấy đơn hàng thành công",
+        data=order_response
+    )
        
