@@ -199,3 +199,14 @@ class OrderCreate(BaseModel):
 
 class OrderCreateResponse(BaseModel):
     url: str
+
+class ItemDetailUpdate(ItemBase):
+    item_id: int
+    category_name: str
+    colors: List[ColorDTO]  # Use ColorDTO here
+    sizes: List[SizeDTO]    # Use SizeDTO here
+    status: str
+    shop_id: int
+    
+    class Config:
+        orm_mode = True
