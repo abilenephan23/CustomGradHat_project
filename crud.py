@@ -43,6 +43,7 @@ def get_orders_by_shop(db: Session, shop_id: int, skip: int, limit: int):
         .join( Item,  OrderDetails.item_id ==  Item.item_id)
         .filter( Item.shop_id == shop_id)
         .options(joinedload( Order.details))  # Load chi tiết đơn hàng
+        .order_by(Order.order_id.desc())
         .offset(skip)
         .limit(limit)
         .all())
@@ -52,6 +53,7 @@ def get_orders_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 10
         db.query(Order)
         .filter(Order.customer_id == user_id)
         .options(joinedload(Order.details))
+        .order_by(Order.order_id.desc())
         .offset(skip)
         .limit(limit)
         .all()

@@ -20,6 +20,8 @@ from crud import *
 from payment import get_payment_url
 from starlette.responses import RedirectResponse
 from payos import PayOS, ItemData, PaymentData
+from sqlalchemy import cast, String
+
 
 
 load_dotenv()
@@ -980,7 +982,6 @@ def order_callback_payos(orderCode:str = None,code:str = None,id:str = None,canc
             order.order_status = '0'
             order.response = "Đơn hàng đã bị hủy"
             order.payment_status = '0'
-            order.shipping_status = '0'
             # Return the quantity back to the item
             for item in order.details:
                 db_item = db.query(Item).filter(Item.item_id == item.item_id).first()
@@ -1207,3 +1208,165 @@ def get_user_orders(
             }
         }
     )
+
+# API update order status 
+@app.put("/orders/reject/{order_id}/status", response_model=ResponseAPI)
+def update_order_status(
+    order_id: int,
+    db: Session = Depends(get_db)
+):
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        return ResponseAPI(
+            status=-1,
+            message="Không tìm thấy đơn hàng",
+            data=None
+        )
+    
+
+    order.order_status = '0'
+    order.response = "Đơn hàng đã bị từ chối"
+ 
+    db.commit()
+    return ResponseAPI(
+        status=1,
+        message="Cập nhật đơn hàng thành công",
+        data=None
+    )
+
+# API update order status 
+@app.put("/orders/accept/{order_id}/status", response_model=ResponseAPI)
+def update_order_status(
+    order_id: int,
+    db: Session = Depends(get_db)
+):
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        return ResponseAPI(
+            status=-1,
+            message="Không tìm thấy đơn hàng",
+            data=None
+        )
+    
+
+    order.order_status = '1'
+ 
+    db.commit()
+    return ResponseAPI(
+        status=1,
+        message="Cập nhật đơn hàng thành công",
+        data=None
+    )
+
+# API update order shipping status 
+@app.put("/orders/shop-confirm-shipping/{order_id}/status", response_model=ResponseAPI)
+def update_order_status(
+    order_id: int,
+    db: Session = Depends(get_db)
+):
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        return ResponseAPI(
+            status=-1,
+            message="Không tìm thấy đơn hàng",
+            data=None
+        )
+    
+
+    order.shipping_status = '0'
+ 
+    db.commit()
+    return ResponseAPI(
+        status=1,
+        message="Cập nhật đơn hàng thành công",
+        data=None
+    )
+
+# API update order shipping status 
+@app.put("/orders/user-confirm-shipping/{order_id}/status", response_model=ResponseAPI)
+def update_order_status(
+    order_id: int,
+    db: Session = Depends(get_db)
+):
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        return ResponseAPI(
+            status=-1,
+            message="Không tìm thấy đơn hàng",
+            data=None
+        )
+    
+
+    order.shipping_status = '1'
+ 
+    db.commit()
+    return ResponseAPI(
+        status=1,
+        message="Cập nhật đơn hàng thành công",
+        data=None
+    )
+
+@app.get("/items", response_model=ResponseAPI)
+def get_all_items_by_status(
+    status: bool = Query(True),  # Boolean query parameter for status
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),  # Start page from 1 (1-based index)
+    limit: int = Query(10, ge=1),  # Limit for pagination
+):
+    skip = (page - 1) * limit
+
+    # Query to get total number of items with the given status
+    total_items = db.query(Item).filter(cast(Item.status, String) == ('1' if status else '0')).count()
+    
+    # Query to get the paginated items with the given status
+    items = db.query(Item).filter(Item.status == ('1' if status else '0')).offset(skip).limit(limit).all()
+
+    total_pages = (total_items + limit - 1) // limit  # Round up
+    next_page = page + 1 if page < total_pages else None
+    prev_page = page - 1 if page > 1 else None
+
+    items_response = [
+        ItemDetail(
+            item_id=item.item_id,
+            shop_id=item.shop_id,
+            name=item.name,
+            category_id=item.category_id,
+            category_name=item.category.category_name,
+            price=item.price,
+            description=item.description,
+            image_url=item.image_url,
+            quantity=item.quantity,
+            # Create a dictionary for each color using ColorCreate
+            colors=[ColorDTO(color_id=color.color_id, color_label=color.color_label) 
+                    for color in db.query(Color).join(ItemColors).filter(ItemColors.item_id == item.item_id).all()],
+            # Create a dictionary for each size using SizeCreate
+            sizes=[SizeDTO(size_id=size.size_id, size_label=size.size_label) 
+                   for size in db.query(Size).join(ItemSizes).filter(ItemSizes.item_id == item.item_id).all()],
+            status=item.status,
+            shop= ShopDetail(
+                shop_id=item.shop_id,
+                shop_name=item.shop.shop_name,
+                address=item.shop.address,
+                phone=item.shop.phone,
+                description=item.shop.description,
+                status=item.shop.status
+            )           
+        )
+        for item in items
+    ]
+
+    return ResponseAPI(
+        status=1,
+        message="Lấy danh sách sản phẩm thành công!",
+        data={
+            "items": items_response,
+            "pagination": {
+                "total_records": total_items,
+                "total_pages": total_pages,
+                "current_page": page,
+                "next_page": next_page,
+                "prev_page": prev_page
+            }
+        }
+    )
+
