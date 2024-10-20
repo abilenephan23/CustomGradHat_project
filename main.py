@@ -21,6 +21,9 @@ from payment import get_payment_url
 from starlette.responses import RedirectResponse
 from payos import PayOS, ItemData, PaymentData
 from sqlalchemy import cast, String
+from datetime import datetime, timedelta
+
+
 
 
 
@@ -1367,6 +1370,444 @@ def get_all_items_by_status(
                 "next_page": next_page,
                 "prev_page": prev_page
             }
+        }
+    )
+
+
+@app.get("/getRevenueByMonth/{shop_id}/{year}/{month}", response_model=ResponseAPI)
+def get_getRevenueByMonthOfShop(
+    shop_id: int, 
+    year: int,
+    month: int,
+    db: Session = Depends(get_db),
+):
+    # Fetching orders for the shop
+    orders = (
+        db.query(Order)
+        .join(OrderDetails, Order.order_id == OrderDetails.order_id)
+        .join(Item, OrderDetails.item_id == Item.item_id)
+        .filter(Item.shop_id == shop_id)
+        .options(joinedload(Order.details))  # Load order details
+        .order_by(Order.order_id.desc())
+        .all()
+    )
+
+    order_response = [
+        {
+            "order_id": order.order_id,
+            "total_price": float(order.total_price),
+            "order_at": float(order.order_at),  # Ensure it's a float for timestamp processing
+            "order_status": order.order_status,
+            "payment_status": order.payment_status,
+            "shipping_status": order.shipping_status,
+        }
+        for order in orders
+    ]
+
+    # Ensure month and year are valid and generate the start and end dates
+    try:
+        start_of_month = datetime(year, month, 1)
+        if month == 12:  # Handle the year boundary for December
+            end_of_month = datetime(year + 1, 1, 1) - timedelta(seconds=1)
+        else:
+            end_of_month = datetime(year, month + 1, 1) - timedelta(seconds=1)
+    except ValueError:
+        return ResponseAPI(
+            status=-1,
+            message="Invalid month or year provided.",
+            data={}
+        )
+
+    # Get the number of days in the month
+    num_days_in_month = (end_of_month - start_of_month).days + 1
+    num_weeks_in_month = (num_days_in_month + start_of_month.weekday()) // 7 + 1
+
+    # Initialize weeks data for all weeks in the month
+    weeks_data = {f"week{week}": {"totalRevenue": 0, "orderCount": 0} for week in range(1, num_weeks_in_month + 1)}
+
+    # Iterate over orders and group by week
+    for order in order_response:
+        # Convert the timestamp to datetime
+        try:
+            order_date = datetime.fromtimestamp(order['order_at'])  # Use fromtimestamp instead of utcfromtimestamp
+        except Exception as e:
+            print(f"Error converting timestamp: {e}")
+            continue
+
+        # Only process orders within the specified month and year
+        if start_of_month <= order_date <= end_of_month:
+            # Calculate the week number of the month
+            delta = order_date - start_of_month
+            week_number = (delta.days // 7) + 1
+
+            week_key = f"week{week_number}"
+
+            # Only accumulate total revenue and order count if order_status is '1'
+            if order["order_status"] == '1':
+                weeks_data[week_key]["totalRevenue"] += order["total_price"]
+            weeks_data[week_key]["orderCount"] += 1
+
+
+    # Convert the weeks_data dictionary to a list of dictionaries
+    weeks_summary = [
+        {"week": week, "totalRevenue": data["totalRevenue"], "orderCount": data["orderCount"]}
+        for week, data in weeks_data.items()
+    ]
+
+    # Sort by week
+    weeks_summary.sort(key=lambda x: x['week'])
+
+    return ResponseAPI(
+        status=1,
+        message="Lấy doanh thu theo tuần thành công",
+        data={
+            "weeks": weeks_summary
+        }
+    )
+
+@app.get("/getRevenueByMonth/{year}/{month}", response_model=ResponseAPI)
+def get_getRevenueByMonthAdmin(
+    year: int,
+    month: int,
+    db: Session = Depends(get_db),
+):
+    # Fetching orders for the shop
+    orders = (
+        db.query(Order)
+        .join(OrderDetails, Order.order_id == OrderDetails.order_id)
+        .join(Item, OrderDetails.item_id == Item.item_id)
+        .options(joinedload(Order.details))  # Load order details
+        .order_by(Order.order_id.desc())
+        .all()
+    )
+
+    order_response = [
+        {
+            "order_id": order.order_id,
+            "total_price": float(order.total_price),
+            "order_at": float(order.order_at),  # Ensure it's a float for timestamp processing
+            "order_status": order.order_status,
+            "payment_status": order.payment_status,
+            "shipping_status": order.shipping_status,
+        }
+        for order in orders
+    ]
+
+    # Ensure month and year are valid and generate the start and end dates
+    try:
+        start_of_month = datetime(year, month, 1)
+        if month == 12:  # Handle the year boundary for December
+            end_of_month = datetime(year + 1, 1, 1) - timedelta(seconds=1)
+        else:
+            end_of_month = datetime(year, month + 1, 1) - timedelta(seconds=1)
+    except ValueError:
+        return ResponseAPI(
+            status=0,
+            message="Invalid month or year provided.",
+            data={}
+        )
+
+    # Get the number of days in the month
+    num_days_in_month = (end_of_month - start_of_month).days + 1
+    num_weeks_in_month = (num_days_in_month + start_of_month.weekday()) // 7 + 1
+
+    # Initialize weeks data for all weeks in the month
+    weeks_data = {f"week{week}": {"totalRevenue": 0, "orderCount": 0} for week in range(1, num_weeks_in_month + 1)}
+
+    # Iterate over orders and group by week
+    for order in order_response:
+        # Convert the timestamp to datetime
+        try:
+            order_date = datetime.fromtimestamp(order['order_at'])  # Use fromtimestamp instead of utcfromtimestamp
+        except Exception as e:
+            print(f"Error converting timestamp: {e}")
+            continue
+
+        # Only process orders within the specified month and year
+        if start_of_month <= order_date <= end_of_month:
+            # Calculate the week number of the month
+            delta = order_date - start_of_month
+            week_number = (delta.days // 7) + 1
+
+            week_key = f"week{week_number}"
+
+            # Only accumulate total revenue and order count if order_status is '1'
+            if order["order_status"] == '1':
+                weeks_data[week_key]["totalRevenue"] += order["total_price"]
+            weeks_data[week_key]["orderCount"] += 1
+
+
+    # Convert the weeks_data dictionary to a list of dictionaries
+    weeks_summary = [
+        {"week": week, "totalRevenue": data["totalRevenue"], "orderCount": data["orderCount"]}
+        for week, data in weeks_data.items()
+    ]
+
+    # Sort by week
+    weeks_summary.sort(key=lambda x: x['week'])
+
+    return ResponseAPI(
+        status=1,
+        message="Lấy doanh thu theo tuần thành công",
+        data={
+            "weeks": weeks_summary
+        }
+    )
+
+
+@app.get("/getRevenueByToday/{shop_id}", response_model=ResponseAPI)
+def get_revenue_by_today_shop(
+    shop_id: int, 
+    db: Session = Depends(get_db),
+):
+    # Fetching orders for the shop
+    orders = (
+        db.query(Order)
+        .join(OrderDetails, Order.order_id == OrderDetails.order_id)
+        .join(Item, OrderDetails.item_id == Item.item_id)
+        .filter(Item.shop_id == shop_id)
+        .options(joinedload(Order.details))  # Load order details
+        .order_by(Order.order_id.desc())
+        .all()
+    )
+
+    order_response = [
+        {
+            "order_id": order.order_id,
+            "total_price": float(order.total_price),
+            "order_at": float(order.order_at),  # Ensure it's a float for timestamp processing
+            "order_status": order.order_status,
+            "payment_status": order.payment_status,
+            "shipping_status": order.shipping_status,
+        }
+        for order in orders
+    ]
+
+    # Get today's date range
+    today = datetime.now()
+    start_of_today = datetime(today.year, today.month, today.day, 0, 0, 0)
+    end_of_today = datetime(today.year, today.month, today.day, 23, 59, 59)
+
+    total_revenue_today = 0
+    total_orders_today = 0
+
+  # Iterate over orders and filter for the specific day
+    for order in order_response:
+        try:
+            order_date = datetime.fromtimestamp(order['order_at'])  # Convert to datetime
+        except Exception as e:
+            print(f"Error converting timestamp: {e}")
+            continue
+
+        # Check if the order is within the specified day range
+        if start_of_today <= order_date <= end_of_today:
+            # Only count the revenue if order_status is '1'
+            if order['order_status'] == '1':
+                total_revenue += order['total_price']
+            total_orders += 1
+
+
+    return ResponseAPI(
+        status=1,
+        message="Lấy doanh thu hôm nay thành công",
+        data={
+            "totalRevenueToday": total_revenue_today,
+            "orderCountToday": total_orders_today
+        }
+    )
+
+@app.get("/getRevenueByToday/", response_model=ResponseAPI)
+def get_revenue_by_today_admin(
+    db: Session = Depends(get_db),
+):
+    # Fetching orders for the shop
+    orders = (
+        db.query(Order)
+        .join(OrderDetails, Order.order_id == OrderDetails.order_id)
+        .join(Item, OrderDetails.item_id == Item.item_id)
+        .options(joinedload(Order.details))  # Load order details
+        .order_by(Order.order_id.desc())
+        .all()
+    )
+
+    order_response = [
+        {
+            "order_id": order.order_id,
+            "total_price": float(order.total_price),
+            "order_at": float(order.order_at),  # Ensure it's a float for timestamp processing
+            "order_status": order.order_status,
+            "payment_status": order.payment_status,
+            "shipping_status": order.shipping_status,
+        }
+        for order in orders
+    ]
+
+    # Get today's date range
+    today = datetime.now()
+    start_of_today = datetime(today.year, today.month, today.day, 0, 0, 0)
+    end_of_today = datetime(today.year, today.month, today.day, 23, 59, 59)
+
+    total_revenue_today = 0
+    total_orders_today = 0
+
+     # Iterate over orders and filter for the specific day
+    for order in order_response:
+        try:
+            order_date = datetime.fromtimestamp(order['order_at'])  # Convert to datetime
+        except Exception as e:
+            print(f"Error converting timestamp: {e}")
+            continue
+
+        # Check if the order is within the specified day range
+        if start_of_today <= order_date <= end_of_today:
+            # Only count the revenue if order_status is '1'
+            if order['order_status'] == '1':
+                total_revenue += order['total_price']
+            total_orders += 1
+
+    return ResponseAPI(
+        status=1,
+        message="Lấy doanh thu hôm nay thành công",
+        data={
+            "totalRevenueToday": total_revenue_today,
+            "orderCountToday": total_orders_today
+        }
+    )
+
+@app.get("/getRevenueByDay/{shop_id}/{day}/{month}/{year}", response_model=ResponseAPI)
+def get_revenue_by_day_shop(
+    shop_id: int,
+    day: int,
+    month: int,
+    year: int,
+    db: Session = Depends(get_db),
+):
+    # Fetching orders for the shop
+    orders = (
+        db.query(Order)
+        .join(OrderDetails, Order.order_id == OrderDetails.order_id)
+        .join(Item, OrderDetails.item_id == Item.item_id)
+        .filter(Item.shop_id == shop_id)
+        .options(joinedload(Order.details))  # Load order details
+        .order_by(Order.order_id.desc())
+        .all()
+    )
+
+    order_response = [
+        {
+            "order_id": order.order_id,
+            "total_price": float(order.total_price),
+            "order_at": float(order.order_at),  # Ensure it's a float for timestamp processing
+            "order_status": order.order_status,
+            "payment_status": order.payment_status,
+            "shipping_status": order.shipping_status,
+        }
+        for order in orders
+    ]
+
+    # Get the specified day range
+    try:
+        start_of_day = datetime(year, month, day, 0, 0, 0)
+        end_of_day = datetime(year, month, day, 23, 59, 59)
+    except ValueError as e:
+        return ResponseAPI(
+            status=-1,
+            message=f"Invalid date provided: {e}",
+            data={}
+        )
+
+    total_revenue = 0
+    total_orders = 0
+
+    # Iterate over orders and filter for the specific day
+    for order in order_response:
+        try:
+            order_date = datetime.fromtimestamp(order['order_at'])  # Convert to datetime
+        except Exception as e:
+            print(f"Error converting timestamp: {e}")
+            continue
+
+        # Check if the order is within the specified day range
+        if start_of_day <= order_date <= end_of_day:
+            # Only count the revenue if order_status is '1'
+            if order['order_status'] == '1':
+                total_revenue += order['total_price']
+            total_orders += 1
+
+    return ResponseAPI(
+        status=1,
+        message=f"Successfully fetched revenue for {day}/{month}/{year}",
+        data={
+            "totalRevenue": total_revenue,
+            "orderCount": total_orders
+        }
+    )
+
+
+@app.get("/getRevenueByDay/{day}/{month}/{year}", response_model=ResponseAPI)
+def get_revenue_by_day(
+    day: int,
+    month: int,
+    year: int,
+    db: Session = Depends(get_db),
+):
+    # Fetching orders for the shop
+    orders = (
+        db.query(Order)
+        .join(OrderDetails, Order.order_id == OrderDetails.order_id)
+        .join(Item, OrderDetails.item_id == Item.item_id)
+        .options(joinedload(Order.details))  # Load order details
+        .order_by(Order.order_id.desc())
+        .all()
+    )
+
+    order_response = [
+        {
+            "order_id": order.order_id,
+            "total_price": float(order.total_price),
+            "order_at": float(order.order_at),  # Ensure it's a float for timestamp processing
+            "order_status": order.order_status,
+            "payment_status": order.payment_status,
+            "shipping_status": order.shipping_status,
+        }
+        for order in orders
+    ]
+
+    # Get the specified day range
+    try:
+        start_of_day = datetime(year, month, day, 0, 0, 0)
+        end_of_day = datetime(year, month, day, 23, 59, 59)
+    except ValueError as e:
+        return ResponseAPI(
+            status=-1,
+            message=f"Invalid date provided: {e}",
+            data={}
+        )
+
+    total_revenue = 0
+    total_orders = 0
+
+    # Iterate over orders and filter for the specific day
+    for order in order_response:
+        try:
+            order_date = datetime.fromtimestamp(order['order_at'])  # Convert to datetime
+        except Exception as e:
+            print(f"Error converting timestamp: {e}")
+            continue
+
+        # Check if the order is within the specified day range
+        if start_of_day <= order_date <= end_of_day:
+            # Only count the revenue if order_status is '1'
+            if order['order_status'] == '1':
+                total_revenue += order['total_price']
+            total_orders += 1
+
+    return ResponseAPI(
+        status=1,
+        message=f"Successfully fetched revenue for {day}/{month}/{year}",
+        data={
+            "totalRevenue": total_revenue,
+            "orderCount": total_orders
         }
     )
 
