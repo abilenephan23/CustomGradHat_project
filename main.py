@@ -26,6 +26,7 @@ from datetime import datetime, timedelta
 
 
 
+
 load_dotenv()
 
 SECURITY_ALGORITHM = os.getenv('SECURITY_ALGORITHM')
@@ -1809,3 +1810,4 @@ def get_revenue_by_day(
             "orderCount": total_orders
         }
     )
+
