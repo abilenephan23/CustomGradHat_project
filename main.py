@@ -1603,8 +1603,8 @@ def get_revenue_by_today_shop(
         if start_of_today <= order_date <= end_of_today:
             # Only count the revenue if order_status is '1'
             if order['order_status'] == '1':
-                total_revenue += order['total_price']
-            total_orders += 1
+                total_revenue_today += order['total_price']
+            total_orders_today += 1
 
 
     return ResponseAPI(
@@ -1662,8 +1662,9 @@ def get_revenue_by_today_admin(
         if start_of_today <= order_date <= end_of_today:
             # Only count the revenue if order_status is '1'
             if order['order_status'] == '1':
-                total_revenue += order['total_price']
-            total_orders += 1
+                total_revenue_today += order['total_price']
+            total_orders_today += 1
+
 
     return ResponseAPI(
         status=1,
