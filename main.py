@@ -1666,6 +1666,7 @@ def get_revenue_by_today_admin(
                 total_revenue_today += order['total_price']
             total_orders_today += 1
 
+
     return ResponseAPI(
         status=1,
         message="Lấy doanh thu hôm nay thành công",
