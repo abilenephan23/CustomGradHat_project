@@ -356,7 +356,8 @@ def create_item(item: ItemBase, db: Session = Depends(get_db)):
         price=item.price,
         description=item.description,
         image_url=item.image_url,
-        quantity=item.quantity
+        quantity=item.quantity,
+        status='1'
     )
 
     # Add the new item to the database
