@@ -796,13 +796,15 @@ def create_order(order: OrderCreate, request: Request, db: Session = Depends(get
 
         itemsPayos = []
         # create payment data url with pay os
-        for item in order.items:
-            item = ItemData(name=item.item_name, price=item.item_price, quantity=item.item_quantity)
-            itemsPayos.append(item)
+        if order.items:
+            for item in order.items:
+                item = ItemData(name=item.item_name, price=item.item_price, quantity=item.item_quantity)
+                itemsPayos.append(item)
             
-        for customize in order.customizations:
-            custom = ItemData(name=customize.description,price=customize.price_adjustment,quantity=1)
-            itemsPayos.append(custom)
+        if order.customizations:
+            for customize in order.customizations:
+                custom = ItemData(name=customize.description,price=customize.price_adjustment,quantity=1)
+                itemsPayos.append(custom)
 
         paymentData = PaymentData(
             orderCode=new_order.order_id,
