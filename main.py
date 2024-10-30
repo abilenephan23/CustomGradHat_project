@@ -1815,3 +1815,16 @@ def get_revenue_by_day(
         }
     )
 
+# API count total number of users
+@app.get("/getTotalUsers/", response_model=ResponseAPI)
+def get_total_users(
+    db: Session = Depends(get_db),
+):
+    total_users = db.query(User).count()
+    return ResponseAPI(
+        status=1,
+        message="Successfully fetched total number of users",
+        data={
+            "totalUsers": total_users
+        }
+    )
